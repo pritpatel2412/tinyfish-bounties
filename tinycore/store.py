@@ -288,6 +288,30 @@ class SqliteStore:
         finally:
             conn.close()
 
+    def update_version(self, version_id: str, updates: dict) -> dict | None:
+        conn = self._conn()
+        try:
+            set_clauses = []
+            params = []
+            for k, v in updates.items():
+                if k in ("id", "page_id", "version_no"):
+                    continue
+                set_clauses.append(f"{k} = ?")
+                if k in ("blocks", "classification") and not isinstance(v, str) and v is not None:
+                    params.append(json.dumps(v))
+                else:
+                    params.append(v)
+            if not set_clauses:
+                return None
+            params.append(version_id)
+            with conn:
+                conn.execute(f"UPDATE versions SET {', '.join(set_clauses)} WHERE id = ?", tuple(params))
+            cur = conn.execute("SELECT * FROM versions WHERE id = ?", (version_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
     def get_latest_version(self, page_id: str) -> dict | None:
         conn = self._conn()
         try:
@@ -350,6 +374,22 @@ class SqliteStore:
                 "diff": d.get("diff", {}),
                 "created_at": now_utc
             }
+        finally:
+            conn.close()
+
+    def get_check_by_run_id(self, run_id: str) -> dict | None:
+        conn = self._conn()
+        try:
+            cur = conn.execute("SELECT * FROM checks WHERE run_id = ?", (run_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            try:
+                d["detail"] = json.loads(d["detail"] or "{}")
+            except Exception:
+                d["detail"] = {}
+            return d
         finally:
             conn.close()
 
@@ -498,6 +538,30 @@ class SupabaseStore:
             return arr[0] if arr else None
         return None
 
+    def update_version(self, version_id: str, updates: dict) -> dict | None:
+        conn = self._conn()
+        try:
+            set_clauses = []
+            params = []
+            for k, v in updates.items():
+                if k in ("id", "page_id", "version_no"):
+                    continue
+                set_clauses.append(f"{k} = ?")
+                if k in ("blocks", "classification") and not isinstance(v, str) and v is not None:
+                    params.append(json.dumps(v))
+                else:
+                    params.append(v)
+            if not set_clauses:
+                return None
+            params.append(version_id)
+            with conn:
+                conn.execute(f"UPDATE versions SET {', '.join(set_clauses)} WHERE id = ?", tuple(params))
+            cur = conn.execute("SELECT * FROM versions WHERE id = ?", (version_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
     def get_latest_version(self, page_id: str) -> dict | None:
         url = f"{self.sb_url}/rest/v1/versions?page_id=eq.{page_id}&order=version_no.desc&limit=1"
         resp = self.client.get(url, headers=self.headers)
@@ -516,6 +580,14 @@ class SupabaseStore:
 
     def add_diff(self, d: dict) -> dict:
         return self._post("diffs", d)
+
+    def get_check_by_run_id(self, run_id: str) -> dict | None:
+        url = f"{self.sb_url}/rest/v1/checks?run_id=eq.{run_id}&limit=1"
+        resp = self.client.get(url, headers=self.headers)
+        if resp.status_code == 200:
+            arr = resp.json()
+            return arr[0] if arr else None
+        return None
 
     def get_diff(self, page_id: str, from_v: int, to_v: int) -> dict | None:
         url = f"{self.sb_url}/rest/v1/diffs?page_id=eq.{page_id}&from_version=eq.{from_v}&to_version=eq.{to_v}"
