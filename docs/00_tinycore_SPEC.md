@@ -24,15 +24,20 @@ Create `scripts/smoke_tinyfish.py`. Read TinyFish docs first. Write findings to 
 ### `tf_client.py`
 ```python
 class TF:
-    def fetch(self, url:str, render:bool=False, screenshot:bool=False) -> FetchResult   # html, text, status, screenshot_bytes|None, run_id
-    def agent_run(self, url:str, goal:str, output_schema:dict, max_steps:int=25) -> AgentResult  # data(dict), run_id, trace_url|None
-    def monitor_create(self, url:str, interval_minutes:int, label:str) -> str  # monitor_id
-    def monitor_events(self, monitor_id:str, since:datetime|None) -> list[MonitorEvent]
+    def fetch(self, url:str, format:str="markdown") -> FetchResult   # text, status, latency_ms
+    def agent_run(self, url:str, goal:str, output_schema:dict) -> AgentResult  # data(dict), run_id, num_steps
+    def screenshot(self, url:str) -> bytes  # Primary: Browser API CDP session (cheaper, full-page); fallback: agent step
+    def monitor_create(self, url:str, interval_minutes:int, name:str, webhook_url:str|None=None, purpose:str|None=None) -> tuple[str, dict]  # (monitor_id, baseline_run)
+    def monitor_trigger_run(self, monitor_id:str) -> dict  # run object
     def monitor_delete(self, monitor_id:str) -> None
-    def screenshot(self, url:str) -> bytes
+    def get_run(self, run_id:str, screenshots:str="url") -> dict
 ```
 - Retries: 3x exponential backoff on 429/5xx/timeouts. Typed errors: `TFRateLimited`, `TFBlocked`(captcha/403), `TFTimeout`, `TFSchemaMismatch`.
-- `TODO(confirm)`: endpoint paths, auth, payload shapes from TINYFISH_NOTES.md.
+- All calls logged to `data/tf_calls.jsonl` with cost estimate.
+
+### `ledger.py` (CostLedger & MonitorBudget)
+- `MonitorBudget`: Hard account cap = 50 monitors. Per-app quotas: Time Machine <= 30, TinyVerify <= 10, Site2MCP <= 2 (total 42, 8 buffer). Rejects allocations beyond quota.
+- `CostLedger`: Tracks cumulative spend across calls. Daily budget cap env `MAX_DAILY_USD` (default $2.50). Aborts with `BudgetExceeded` when daily spend hits threshold. Persisted in SQLite.
 
 ### `normalize.py`
 - `clean_html(html)->str`: drop script/style/noscript/nav/footer/cookie banners/ad iframes; keep headings, tables, lists.
@@ -66,8 +71,10 @@ SQLite (`data/app.db`, WAL) + object storage abstraction: `ScreenshotStore.put(b
 - `temperature=0`, JSON mode, disk cache keyed by `sha256(prompt)`, rate-limit aware (sleep on 429).
 - Allowed functions ONLY: `classify_change(diff)->{type: price|limit|legal|feature|cosmetic, materiality:0-1, summary}` and `extract_fallback(text, schema)->dict` (validated by rule 4).
 
-### `monitor_poller.py`
-Cron loop (APScheduler) polling `tf.monitor_events` every 5–10 min for all registered monitors. **Do not rely on webhooks alone** (free hosts sleep). If webhook exists, use it as accelerator + poll as source of truth. Idempotent by `(monitor_id, event_id|content_hash)`.
+### `events.py` & `monitor_poller.py`
+- Event source: reads `monitor_events` table in Supabase via REST (`processed=false`), ensuring sleeping free hosts never miss events.
+- Fallback manual checks: Cron loop (APScheduler) can invoke `tf.monitor_trigger_run(monitor_id)` for high-priority pages.
+- Processing is idempotent by `(monitor_id, run_id|content_hash)`. Marks `processed=true` upon completion.
 
 ### `api_common.py`
 FastAPI app factory, `/health`, `/endpoint-usage` (aggregates `tf_calls.jsonl` by endpoint → shows Agent/Fetch/Monitor usage), CORS, JSON error envelope `{error:{code,message,source_url?}}`.

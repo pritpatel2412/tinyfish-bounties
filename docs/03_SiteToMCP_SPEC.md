@@ -40,7 +40,7 @@ README.md
 ## HEALTH CHECK (loud failure) — judged
 - `healthcheck.py` runs per tool a **golden query** with assertions (≥N results, required fields non-null, types valid, dates parse).
 - **Fingerprint**: hash of tag/class skeleton for the listing + detail page; compare to stored baseline → `DRIFT` status.
-- **TinyFish Monitor** on the listing page (3rd endpoint): event → run healthcheck immediately → write `health.json` + flip `/health` to `DEGRADED`.
+- **TinyFish Monitor** on listing page (≤2 monitors quota from MonitorBudget): webhook event from Supabase `monitor_events` → run healthcheck immediately → write `health.json` + flip `/health` to `DEGRADED`.
 - Tools check health flag: if `DEGRADED` and parse fails → raise `SITE_CHANGED` error with message "Site layout changed; tool X cannot parse field Y; last healthy at T". **Never return empty results silently.**
 - `GET /health` (HTTP mode) + `python -m site2mcp.healthcheck` CLI exits non-zero on failure. Optional GitHub Actions cron (free).
 - Include a **documented failure demo**: mutate a fixture HTML → show healthcheck fails with a clear message (fixture-based, labelled as such).

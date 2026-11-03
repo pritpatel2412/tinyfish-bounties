@@ -80,15 +80,15 @@ Registry candidates (**verify each live with the smoke script; keep only those t
 
 ## PIPELINE (`pipeline.py`) — deterministic order
 1. Validate input; map `(jurisdiction, record_type)` → adapters via `registry_loader`. None → `UNSUPPORTED` + list supported.
-2. For each adapter: **TF.agent_run** (search_url, agent_goal, result_schema) → candidate rows. Catch `TFBlocked` → mark adapter `BLOCKED` in notes.
+2. For each adapter: If `search_mode == "url_template"`, perform **Fetch-first** search and parse candidate rows deterministically in Python. Fallback to **TF.agent_run** only if interaction/form submission is required. Catch `TFBlocked` → mark adapter `BLOCKED` in notes.
 3. `names.resolve(query.name, candidates)` (+identifier exact match) → MATCH/MULTIPLE/NO_MATCH.
-4. If MATCH: **TF.fetch(detail_url, render=True, screenshot=True)** → parse via selectors → fallback Groq extract (validated) → build Evidence (sha256 of raw html).
+4. If MATCH: **TF.fetch(detail_url)** + **TF.screenshot(detail_url)** → parse via selectors → fallback Groq extract (validated) → build Evidence (sha256 of raw html).
 5. `status_map` normalize (unknown raw → `UNKNOWN`, keep raw).
 6. Corroborate across adapters sharing record_type; set `conflicts`.
 7. Persist; return.
 
 ## MONITOR (`watch.py`) — must be reliable
-- `/watch` → `tf.monitor_create(detail_url, interval)`; store `monitor_id ↔ record_id`.
+- `/watch` → Check `MonitorBudget` (cap ≤ 10 watches; reject with clear 429 error if exceeded) → `tf.monitor_create(detail_url, interval)` → store `monitor_id ↔ record_id`.
 - Poller (every 5–10 min) reads monitor events → on event: re-run steps 4–5 for that record only → compare tracked fields (`status, expiry_date, licence_number, disciplinary_actions`) → if changed insert `changes` row `{record_id, field, old, new, detected_at, evidence}` and POST `notify_url` if set.
 - Status transition table (deterministic): any `*→SUSPENDED|REVOKED|EXPIRED` = severity `high`.
 - Demo reliability: provide `/dev/simulate-change` ONLY for local tests (clearly labelled), and in the demo show one **real** monitor event if achievable; never present simulation as real.

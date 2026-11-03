@@ -6,7 +6,7 @@ Depends on: `00_tinycore_SPEC.md`. **START FIRST.** Requirement: ≥3 days live 
 Version-history API over TinyFish Monitor: add any URL → baseline snapshot + screenshot → every real change creates a new version with screenshot + structured diff → query "what did it say on date X" and "what changed between X and Y".
 
 ## NON-NEGOTIABLE DESIGN RULE (Monitor must be core)
-Change detection comes ONLY from TinyFish Monitor events. Our code never schedules its own fetch-compare loop. Our poller only reads Monitor events; on an event we use Fetch/screenshot to capture the content. Remove Monitor ⇒ nothing is ever detected.
+Change detection comes ONLY from TinyFish Monitor events. Our code never schedules its own fetch-compare loop. Our poller reads Monitor events from the Supabase `monitor_events` webhook table (and manual run triggers); on an event we use Fetch to capture content and take a screenshot via Browser CDP ONLY for v1 and non-noise changes. Remove Monitor ⇒ nothing is ever detected.
 
 ## HONEST RISK
 Pricing/ToS pages rarely change in 3 days. Mitigation: seed **≥10 high-churn pages** (docs, rate-limit pages, changelogs, government notice pages) so real changes are caught live. Never simulate changes. History is only claimed from first capture date (`history_starts_at`), never earlier.
@@ -29,12 +29,12 @@ tf_calls (via tinycore)
 
 ## CAPTURE FLOW (`capture.py`)
 1. `POST /pages {url, title?, category?, interval_minutes?}` → Fetch(render) → baseline `v1` (+screenshot) → `tf.monitor_create` → store `monitor_id`.
-2. Poller (every 5–10 min): `tf.monitor_events(monitor_id, since=last)` → for each new event:
-   a. `tf.fetch(url, render=True, screenshot=True)`
+2. Poller (every 5–10 min): Read unprocessed events from Supabase `monitor_events` table (monitor budget ≤30 pages, default interval 360 min, ≥30 min) → for each event:
+   a. `tf.fetch(url)`
    b. `normalize.clean_html → to_blocks`
    c. `differ.diff_blocks(prev_blocks, new_blocks)`
    d. `is_empty` ⇒ write `noise_log`, **no new version**, stop.
-   e. else: store screenshot, new `versions` row, `diffs` row; `llm.classify_change(diff)` → `classification_json` (`price|limit|legal|feature|cosmetic`, materiality, 1-line summary).
+   e. else: capture screenshot via `tf.screenshot(url)` (only for non-noise changes), store screenshot, new `versions` row, `diffs` row; `llm.classify_change(diff)` → `classification_json` (`price|limit|legal|feature|cosmetic`, materiality, 1-line summary).
 3. Idempotent on `monitor_event_id`.
 
 ## DIFF QUALITY (judged heavily)
