@@ -1,40 +1,553 @@
 """
 tinycore/store.py
-SQLite storage abstraction (WAL mode) and ScreenshotStore (Supabase Storage with local /data/shots fallback).
+Storage abstraction supporting both SqliteStore (local/dev/testing) and SupabaseStore (prod/cloud).
+Selected via STORE_BACKEND environment variable ('sqlite' or 'supabase').
+Also provides ScreenshotStore managing uploads to Supabase Storage bucket 'shots' (with local fallback).
 """
 
 import os
+import json
+import uuid
 import sqlite3
+from datetime import datetime, timezone
+from typing import Any
 import httpx
 from dotenv import dotenv_values
 
 DB_PATH = os.path.join("data", "app.db")
 LOCAL_SHOTS_DIR = os.path.join("data", "shots")
-BUCKET_NAME = "screenshots"
+BUCKET_NAME = "shots"
 
 
 def get_db(db_path: str = DB_PATH) -> sqlite3.Connection:
     """Returns a SQLite connection configured with WAL mode and row factory."""
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=15.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     return conn
 
 
-def init_db(schema_path: str = os.path.join("infra", "schema.sql")):
-    """Initializes SQLite schema from SQL file."""
-    if not os.path.exists(schema_path):
-        return
-    with open(schema_path, "r", encoding="utf-8") as f:
-        sql = f.read()
-    conn = get_db()
-    with conn:
-        conn.executescript(sql)
+def init_db(db_path: str = DB_PATH):
+    """Initializes tables for Time Machine in SQLite."""
+    conn = get_db(db_path)
+    try:
+        with conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS pages (
+                    id TEXT PRIMARY KEY,
+                    url TEXT UNIQUE NOT NULL,
+                    title TEXT,
+                    category TEXT,
+                    monitor_id TEXT,
+                    schedule_cron TEXT,
+                    interval_label TEXT,
+                    ignore_selectors TEXT DEFAULT '[]',
+                    added_at TEXT NOT NULL,
+                    history_starts_at TEXT,
+                    active INTEGER NOT NULL DEFAULT 1,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    last_checked_at TEXT
+                );
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_pages_url ON pages(url);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_pages_monitor ON pages(monitor_id);")
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS versions (
+                    id TEXT PRIMARY KEY,
+                    page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+                    version_no INTEGER NOT NULL,
+                    observed_at TEXT NOT NULL,
+                    processed_at TEXT NOT NULL,
+                    lag_seconds INTEGER,
+                    content_hash TEXT NOT NULL,
+                    blocks TEXT NOT NULL,
+                    text_md TEXT,
+                    screenshot_url TEXT,
+                    screenshot_at TEXT,
+                    source_url TEXT NOT NULL,
+                    run_id TEXT,
+                    classification TEXT,
+                    summary TEXT,
+                    UNIQUE(page_id, version_no)
+                );
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ver_page_no ON versions(page_id, version_no);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ver_observed ON versions(page_id, observed_at);")
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS diffs (
+                    id TEXT PRIMARY KEY,
+                    page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+                    from_version INTEGER NOT NULL,
+                    to_version INTEGER NOT NULL,
+                    diff TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+            """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS checks (
+                    id TEXT PRIMARY KEY,
+                    page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+                    observed_at TEXT NOT NULL,
+                    run_id TEXT UNIQUE,
+                    outcome TEXT NOT NULL,
+                    detail TEXT
+                );
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_checks_page ON checks(page_id, observed_at);")
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS monitor_events (
+                    id TEXT PRIMARY KEY,
+                    received_at TEXT NOT NULL,
+                    monitor_id TEXT,
+                    run_id TEXT,
+                    payload TEXT NOT NULL,
+                    processed INTEGER NOT NULL DEFAULT 0
+                );
+            """)
+    finally:
+        conn.close()
+
+
+class SqliteStore:
+    """Local SQLite backend for Time Machine storage."""
+    def __init__(self, db_path: str = DB_PATH):
+        self.db_path = db_path
+        init_db(self.db_path)
+
+    def _conn(self) -> sqlite3.Connection:
+        return get_db(self.db_path)
+
+    def add_page(self, page: dict) -> dict:
+        conn = self._conn()
+        try:
+            page_id = page.get("id") or str(uuid.uuid4())
+            now_utc = datetime.now(timezone.utc).isoformat()
+            added_at = page.get("added_at") or now_utc
+            active = 1 if page.get("active", True) else 0
+            ignore_sel = json.dumps(page.get("ignore_selectors", [])) if not isinstance(page.get("ignore_selectors"), str) else page.get("ignore_selectors")
+            with conn:
+                conn.execute("""
+                    INSERT INTO pages (id, url, title, category, monitor_id, schedule_cron, interval_label,
+                                       ignore_selectors, added_at, history_starts_at, active, status, last_checked_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    page_id, page["url"], page.get("title"), page.get("category"), page.get("monitor_id"),
+                    page.get("schedule_cron"), page.get("interval_label"), ignore_sel,
+                    added_at, page.get("history_starts_at"), active, page.get("status", "active"), page.get("last_checked_at")
+                ))
+            return self.get_page(page_id)  # type: ignore
+        finally:
+            conn.close()
+
+    def get_page(self, page_id: str) -> dict | None:
+        conn = self._conn()
+        try:
+            cur = conn.execute("SELECT * FROM pages WHERE id = ?", (page_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            d["active"] = bool(d["active"])
+            try:
+                d["ignore_selectors"] = json.loads(d["ignore_selectors"] or "[]")
+            except Exception:
+                d["ignore_selectors"] = []
+            return d
+        finally:
+            conn.close()
+
+    def get_page_by_url(self, url: str) -> dict | None:
+        conn = self._conn()
+        try:
+            cur = conn.execute("SELECT * FROM pages WHERE url = ?", (url,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            d["active"] = bool(d["active"])
+            try:
+                d["ignore_selectors"] = json.loads(d["ignore_selectors"] or "[]")
+            except Exception:
+                d["ignore_selectors"] = []
+            return d
+        finally:
+            conn.close()
+
+    def list_pages(self, active_only: bool = False) -> list[dict]:
+        conn = self._conn()
+        try:
+            q = "SELECT * FROM pages"
+            params = ()
+            if active_only:
+                q += " WHERE active = 1"
+            q += " ORDER BY added_at ASC"
+            cur = conn.execute(q, params)
+            results = []
+            for row in cur.fetchall():
+                d = dict(row)
+                d["active"] = bool(d["active"])
+                try:
+                    d["ignore_selectors"] = json.loads(d["ignore_selectors"] or "[]")
+                except Exception:
+                    d["ignore_selectors"] = []
+                results.append(d)
+            return results
+        finally:
+            conn.close()
+
+    def update_page(self, page_id: str, updates: dict) -> dict | None:
+        conn = self._conn()
+        try:
+            set_clauses = []
+            params = []
+            for k, v in updates.items():
+                if k in ("id", "url"):
+                    continue
+                set_clauses.append(f"{k} = ?")
+                if k == "active":
+                    params.append(1 if v else 0)
+                elif k == "ignore_selectors" and not isinstance(v, str):
+                    params.append(json.dumps(v))
+                else:
+                    params.append(v)
+            if not set_clauses:
+                return self.get_page(page_id)
+
+            params.append(page_id)
+            with conn:
+                conn.execute(f"UPDATE pages SET {', '.join(set_clauses)} WHERE id = ?", tuple(params))
+            return self.get_page(page_id)
+        finally:
+            conn.close()
+
+    def add_version(self, v: dict) -> dict:
+        conn = self._conn()
+        try:
+            vid = v.get("id") or str(uuid.uuid4())
+            proc_at = v.get("processed_at") or datetime.now(timezone.utc).isoformat()
+            blocks_raw = json.dumps(v.get("blocks", [])) if not isinstance(v.get("blocks"), str) else v.get("blocks")
+            class_raw = json.dumps(v.get("classification")) if v.get("classification") is not None and not isinstance(v.get("classification"), str) else v.get("classification")
+            with conn:
+                conn.execute("""
+                    INSERT INTO versions (id, page_id, version_no, observed_at, processed_at, lag_seconds,
+                                         content_hash, blocks, text_md, screenshot_url, screenshot_at,
+                                         source_url, run_id, classification, summary)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    vid, v["page_id"], v["version_no"], v["observed_at"], proc_at, v.get("lag_seconds"),
+                    v["content_hash"], blocks_raw, v.get("text_md"), v.get("screenshot_url"),
+                    v.get("screenshot_at"), v["source_url"], v.get("run_id"), class_raw, v.get("summary")
+                ))
+            return self.get_version(v["page_id"], v["version_no"])  # type: ignore
+        finally:
+            conn.close()
+
+    def get_versions(self, page_id: str, limit: int = 100) -> list[dict]:
+        conn = self._conn()
+        try:
+            cur = conn.execute("SELECT * FROM versions WHERE page_id = ? ORDER BY version_no ASC LIMIT ?", (page_id, limit))
+            results = []
+            for row in cur.fetchall():
+                d = dict(row)
+                try:
+                    d["blocks"] = json.loads(d["blocks"] or "[]")
+                except Exception:
+                    d["blocks"] = []
+                try:
+                    d["classification"] = json.loads(d["classification"]) if d["classification"] else None
+                except Exception:
+                    pass
+                results.append(d)
+            return results
+        finally:
+            conn.close()
+
+    def get_version(self, page_id: str, version_no: int) -> dict | None:
+        conn = self._conn()
+        try:
+            cur = conn.execute("SELECT * FROM versions WHERE page_id = ? AND version_no = ?", (page_id, version_no))
+            row = cur.fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            try:
+                d["blocks"] = json.loads(d["blocks"] or "[]")
+            except Exception:
+                d["blocks"] = []
+            try:
+                d["classification"] = json.loads(d["classification"]) if d["classification"] else None
+            except Exception:
+                pass
+            return d
+        finally:
+            conn.close()
+
+    def get_latest_version(self, page_id: str) -> dict | None:
+        conn = self._conn()
+        try:
+            cur = conn.execute("SELECT * FROM versions WHERE page_id = ? ORDER BY version_no DESC LIMIT 1", (page_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            try:
+                d["blocks"] = json.loads(d["blocks"] or "[]")
+            except Exception:
+                d["blocks"] = []
+            try:
+                d["classification"] = json.loads(d["classification"]) if d["classification"] else None
+            except Exception:
+                pass
+            return d
+        finally:
+            conn.close()
+
+    def get_version_asof(self, page_id: str, dt_iso: str) -> dict | None:
+        conn = self._conn()
+        try:
+            cur = conn.execute(
+                "SELECT * FROM versions WHERE page_id = ? AND observed_at <= ? ORDER BY observed_at DESC LIMIT 1",
+                (page_id, dt_iso)
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            try:
+                d["blocks"] = json.loads(d["blocks"] or "[]")
+            except Exception:
+                d["blocks"] = []
+            try:
+                d["classification"] = json.loads(d["classification"]) if d["classification"] else None
+            except Exception:
+                pass
+            return d
+        finally:
+            conn.close()
+
+    def add_diff(self, d: dict) -> dict:
+        conn = self._conn()
+        try:
+            diff_id = d.get("id") or str(uuid.uuid4())
+            now_utc = d.get("created_at") or datetime.now(timezone.utc).isoformat()
+            diff_raw = json.dumps(d.get("diff", {})) if not isinstance(d.get("diff"), str) else d.get("diff")
+            with conn:
+                conn.execute("""
+                    INSERT INTO diffs (id, page_id, from_version, to_version, diff, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (diff_id, d["page_id"], d["from_version"], d["to_version"], diff_raw, now_utc))
+            return {
+                "id": diff_id,
+                "page_id": d["page_id"],
+                "from_version": d["from_version"],
+                "to_version": d["to_version"],
+                "diff": d.get("diff", {}),
+                "created_at": now_utc
+            }
+        finally:
+            conn.close()
+
+    def get_diff(self, page_id: str, from_v: int, to_v: int) -> dict | None:
+        conn = self._conn()
+        try:
+            cur = conn.execute(
+                "SELECT * FROM diffs WHERE page_id = ? AND from_version = ? AND to_version = ?",
+                (page_id, from_v, to_v)
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            res = dict(row)
+            try:
+                res["diff"] = json.loads(res["diff"])
+            except Exception:
+                pass
+            return res
+        finally:
+            conn.close()
+
+    def add_check(self, check: dict) -> dict:
+        conn = self._conn()
+        try:
+            chk_id = check.get("id") or str(uuid.uuid4())
+            detail_raw = json.dumps(check.get("detail", {})) if not isinstance(check.get("detail"), str) else check.get("detail")
+            with conn:
+                conn.execute("""
+                    INSERT OR IGNORE INTO checks (id, page_id, observed_at, run_id, outcome, detail)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    chk_id, check["page_id"], check["observed_at"], check.get("run_id"),
+                    check["outcome"], detail_raw
+                ))
+            return {
+                "id": chk_id,
+                "page_id": check["page_id"],
+                "observed_at": check["observed_at"],
+                "run_id": check.get("run_id"),
+                "outcome": check["outcome"],
+                "detail": check.get("detail", {})
+            }
+        finally:
+            conn.close()
+
+    def get_checks(self, page_id: str | None = None, limit: int = 100) -> list[dict]:
+        conn = self._conn()
+        try:
+            if page_id:
+                cur = conn.execute("SELECT * FROM checks WHERE page_id = ? ORDER BY observed_at DESC LIMIT ?", (page_id, limit))
+            else:
+                cur = conn.execute("SELECT * FROM checks ORDER BY observed_at DESC LIMIT ?", (limit,))
+            res = []
+            for row in cur.fetchall():
+                d = dict(row)
+                try:
+                    d["detail"] = json.loads(d["detail"] or "{}")
+                except Exception:
+                    d["detail"] = {}
+                res.append(d)
+            return res
+        finally:
+            conn.close()
+
+
+class SupabaseStore:
+    """Supabase REST Postgres backend for Time Machine."""
+    def __init__(self):
+        self.sb_url = os.getenv("SUPABASE_URL")
+        self.sb_key = os.getenv("SUPABASE_KEY")
+        if not (self.sb_url and self.sb_key):
+            cfg = dotenv_values(".env")
+            self.sb_url = self.sb_url or cfg.get("SUPABASE_URL")
+            self.sb_key = self.sb_key or cfg.get("SUPABASE_KEY")
+        self.headers = {
+            "apikey": self.sb_key or "",
+            "Authorization": f"Bearer {self.sb_key or ''}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        }
+        self.client = httpx.Client(timeout=15.0)
+
+    def _post(self, table: str, data: dict) -> dict:
+        url = f"{self.sb_url}/rest/v1/{table}"
+        resp = self.client.post(url, headers=self.headers, json=data)
+        if resp.status_code in (200, 201):
+            res = resp.json()
+            return res[0] if isinstance(res, list) and res else data
+        raise RuntimeError(f"Supabase insert into {table} failed: {resp.status_code} {resp.text}")
+
+    def add_page(self, page: dict) -> dict:
+        p = dict(page)
+        if "id" not in p:
+            p["id"] = str(uuid.uuid4())
+        return self._post("pages", p)
+
+    def get_page(self, page_id: str) -> dict | None:
+        url = f"{self.sb_url}/rest/v1/pages?id=eq.{page_id}"
+        resp = self.client.get(url, headers=self.headers)
+        if resp.status_code == 200:
+            arr = resp.json()
+            return arr[0] if arr else None
+        return None
+
+    def get_page_by_url(self, page_url: str) -> dict | None:
+        url = f"{self.sb_url}/rest/v1/pages?url=eq.{page_url}"
+        resp = self.client.get(url, headers=self.headers)
+        if resp.status_code == 200:
+            arr = resp.json()
+            return arr[0] if arr else None
+        return None
+
+    def list_pages(self, active_only: bool = False) -> list[dict]:
+        url = f"{self.sb_url}/rest/v1/pages?order=added_at.asc"
+        if active_only:
+            url += "&active=eq.true"
+        resp = self.client.get(url, headers=self.headers)
+        if resp.status_code == 200:
+            return resp.json()
+        return []
+
+    def update_page(self, page_id: str, updates: dict) -> dict | None:
+        url = f"{self.sb_url}/rest/v1/pages?id=eq.{page_id}"
+        resp = self.client.patch(url, headers=self.headers, json=updates)
+        if resp.status_code == 200:
+            arr = resp.json()
+            return arr[0] if arr else None
+        return None
+
+    def add_version(self, version: dict) -> dict:
+        return self._post("versions", version)
+
+    def get_versions(self, page_id: str, limit: int = 100) -> list[dict]:
+        url = f"{self.sb_url}/rest/v1/versions?page_id=eq.{page_id}&order=version_no.asc&limit={limit}"
+        resp = self.client.get(url, headers=self.headers)
+        if resp.status_code == 200:
+            return resp.json()
+        return []
+
+    def get_version(self, page_id: str, version_no: int) -> dict | None:
+        url = f"{self.sb_url}/rest/v1/versions?page_id=eq.{page_id}&version_no=eq.{version_no}"
+        resp = self.client.get(url, headers=self.headers)
+        if resp.status_code == 200:
+            arr = resp.json()
+            return arr[0] if arr else None
+        return None
+
+    def get_latest_version(self, page_id: str) -> dict | None:
+        url = f"{self.sb_url}/rest/v1/versions?page_id=eq.{page_id}&order=version_no.desc&limit=1"
+        resp = self.client.get(url, headers=self.headers)
+        if resp.status_code == 200:
+            arr = resp.json()
+            return arr[0] if arr else None
+        return None
+
+    def get_version_asof(self, page_id: str, dt_iso: str) -> dict | None:
+        url = f"{self.sb_url}/rest/v1/versions?page_id=eq.{page_id}&observed_at=lte.{dt_iso}&order=observed_at.desc&limit=1"
+        resp = self.client.get(url, headers=self.headers)
+        if resp.status_code == 200:
+            arr = resp.json()
+            return arr[0] if arr else None
+        return None
+
+    def add_diff(self, d: dict) -> dict:
+        return self._post("diffs", d)
+
+    def get_diff(self, page_id: str, from_v: int, to_v: int) -> dict | None:
+        url = f"{self.sb_url}/rest/v1/diffs?page_id=eq.{page_id}&from_version=eq.{from_v}&to_version=eq.{to_v}"
+        resp = self.client.get(url, headers=self.headers)
+        if resp.status_code == 200:
+            arr = resp.json()
+            return arr[0] if arr else None
+        return None
+
+    def add_check(self, check: dict) -> dict:
+        return self._post("checks", check)
+
+    def get_checks(self, page_id: str | None = None, limit: int = 100) -> list[dict]:
+        url = f"{self.sb_url}/rest/v1/checks?order=observed_at.desc&limit={limit}"
+        if page_id:
+            url += f"&page_id=eq.{page_id}"
+        resp = self.client.get(url, headers=self.headers)
+        if resp.status_code == 200:
+            return resp.json()
+        return []
+
+
+def get_store(backend: str | None = None) -> SqliteStore | SupabaseStore:
+    """Factory selecting the storage backend according to STORE_BACKEND env var."""
+    b = (backend or os.getenv("STORE_BACKEND", "sqlite")).strip().lower()
+    if b == "supabase":
+        return SupabaseStore()
+    return SqliteStore()
 
 
 class ScreenshotStore:
+    """Manages screenshot storage in Supabase Storage bucket 'shots' with local fallback."""
     @staticmethod
     def _get_supabase_creds():
         sb_url = os.getenv("SUPABASE_URL")
@@ -47,7 +560,7 @@ class ScreenshotStore:
 
     @classmethod
     def put(cls, image_bytes: bytes, key: str) -> str:
-        """Uploads image bytes to Supabase Storage; falls back to local /data/shots."""
+        """Uploads image bytes to Supabase Storage bucket 'shots'; falls back to local /data/shots."""
         if not key.endswith(".jpg") and not key.endswith(".jpeg") and not key.endswith(".png"):
             key = f"{key}.jpg"
 
@@ -58,7 +571,8 @@ class ScreenshotStore:
                 headers = {
                     "apikey": sb_key,
                     "Authorization": f"Bearer {sb_key}",
-                    "Content-Type": "image/jpeg"
+                    "Content-Type": "image/jpeg",
+                    "x-upsert": "true"
                 }
                 with httpx.Client(timeout=15) as client:
                     resp = client.post(upload_url, headers=headers, content=image_bytes)

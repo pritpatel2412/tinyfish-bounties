@@ -98,3 +98,73 @@ def test_clean_html_removes_scripts_and_banners():
     assert "Accept all cookies" not in cleaned
     assert "Our Pricing" in cleaned
     assert "Basic: $5/mo" in cleaned
+
+
+def test_markdown_to_blocks_table_price_change():
+    from tinycore.normalize import markdown_to_blocks
+
+    v1_md = """# Pricing Plans
+| Plan | Price | Features |
+| :--- | :---: | :--- |
+| Basic | $10/mo | 1 user, basic api |
+| Pro | $25/mo | 5 users, priority api |
+| Enterprise | $100/mo | Unlimited users |
+"""
+
+    v2_md = """# Pricing Plans
+| Plan | Price | Features |
+| :--- | :---: | :--- |
+| Basic | $10/mo | 1 user, basic api |
+| Pro | $39/mo | 5 users, priority api |
+| Enterprise | $100/mo | Unlimited users |
+"""
+
+    b1 = markdown_to_blocks(v1_md)
+    b2 = markdown_to_blocks(v2_md)
+
+    # 4 rows (1 header + 3 data rows) under heading 'Pricing Plans'
+    assert len(b1) == 4
+    assert len(b2) == 4
+    assert all(b.heading_path == "Pricing Plans" for b in b1)
+
+    diff = diff_blocks(b1, b2)
+    assert diff.is_empty is False
+    assert len(diff.changed) == 1
+    assert len(diff.added) == 0
+    assert len(diff.removed) == 0
+
+    ch = diff.changed[0]
+    assert ch.heading_path == "Pricing Plans"
+    assert "$25/mo" in ch.before
+    assert "$39/mo" in ch.after
+    assert len(ch.numeric_delta) >= 1
+    deltas = {d["unit"]: (d["old"], d["new"]) for d in ch.numeric_delta}
+    assert "$/mo" in deltas
+    assert deltas["$/mo"] == (25.0, 39.0)
+
+
+def test_markdown_to_blocks_reordered_noise_is_empty():
+    from tinycore.normalize import markdown_to_blocks
+
+    v1_md = """# Changelog & Status
+Last updated: October 24, 2026 at 15:30:00 UTC
+Our primary API cluster is fully operational with 99.99% uptime.
+© 2024-2026 Platform Inc.
+Reviewed by security team on 2026-10-20
+"""
+
+    v2_md = """# Changelog & Status
+Reviewed by security team on 2026-11-03
+Our primary API cluster is fully operational with 99.99% uptime.
+Last updated: November 03, 2026 at 20:15:00 UTC
+© 2024-2026 Platform Inc.
+"""
+
+    b1 = markdown_to_blocks(v1_md)
+    b2 = markdown_to_blocks(v2_md)
+
+    diff = diff_blocks(b1, b2)
+    assert diff.is_empty is True
+    assert len(diff.changed) == 0
+    assert len(diff.added) == 0
+    assert len(diff.removed) == 0

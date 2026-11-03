@@ -14,6 +14,7 @@ import time
 import asyncio
 from datetime import datetime, timezone
 from dataclasses import dataclass
+from typing import NamedTuple
 import httpx
 from playwright.async_api import async_playwright
 
@@ -62,6 +63,10 @@ class FetchResult:
     title: str | None = None
     final_url: str | None = None
 
+
+class MonitorCreateResult(NamedTuple):
+    monitor_id: str
+    run: dict
 
 @dataclass
 class AgentResult:
@@ -204,7 +209,10 @@ class TF:
             data = resp.json()
             run_id = data.get("run_id")
             status = data.get("status")
-            num_steps = data.get("num_of_steps", 1)
+            num_steps = data.get("num_of_steps")
+            if num_steps is None:
+                steps_list = data.get("steps", [])
+                num_steps = len(steps_list) if steps_list else 1
             cost = num_steps * RATES["agent_step"]
             ok = (status == "COMPLETED")
             CostLedger.record_call("agent_run", cost, f"run_id={run_id}, steps={num_steps}")
@@ -276,26 +284,36 @@ class TF:
 
     def monitor_create(
         self,
-        url: str,
-        interval_minutes: int,
-        name: str,
+        url: str | None = None,
+        interval_minutes: int = 360,
+        name: str | None = None,
         webhook_url: str | None = None,
         purpose: str | None = None,
-        app: str | None = None
-    ) -> tuple[str, dict]:
+        app: str | None = None,
+        schedule_cron: str | None = None,
+        type: str = "fetch",
+        config: dict | None = None
+    ) -> MonitorCreateResult:
         """Create a page monitor and capture the baseline run."""
+        if config and not url:
+            url = config.get("url", "")
+        if not name:
+            name = f"Monitor for {url or 'target'}"
+        if schedule_cron:
+            cron = schedule_cron
+        else:
+            cron = minutes_to_cron(interval_minutes)
+        if not config:
+            config = {"url": url, "format": "markdown"}
+
         if app:
             MonitorBudget.allocate(app, 1)
         CostLedger.check_budget(RATES["monitor_create"])
 
-        cron = minutes_to_cron(interval_minutes)
         payload = {
-            "type": "fetch",
+            "type": type,
             "name": name,
-            "config": {
-                "url": url,
-                "format": "markdown"
-            },
+            "config": config,
             "schedule_cron": cron,
             "purpose": purpose or "Detect material page changes"
         }
@@ -316,7 +334,7 @@ class TF:
             baseline_run = data.get("run", {})
             CostLedger.record_call("monitor_create", RATES["monitor_create"], f"monitor_id={monitor_id}")
             log_tf_call("monitor_create", url, True, latency_ms, run_id=baseline_run.get("id"), cost_usd=RATES["monitor_create"])
-            return monitor_id, baseline_run
+            return MonitorCreateResult(monitor_id=monitor_id, run=baseline_run)
         except Exception as e:
             if app:
                 MonitorBudget.release(app, 1)

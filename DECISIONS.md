@@ -41,3 +41,18 @@
 ### Decision 9: Fetch-First Architecture for Registry Adapters (Probe A5)
 - **Finding**: Fetching search and detail pages via `api.fetch.tinyfish.ai` took ~16s total at $0.00 cost and extracted exact company numbers and names, compared to 55s and $0.160 for Agent runs.
 - **Decision**: TinyVerify adapters declare `search.mode: url_template | agent`. Adapters default to `url_template + Fetch + Python parse` first, reserving Agent strictly for sites with anti-bot, dynamic JavaScript form submission, or pagination requirements.
+
+
+## 2026-11-03 — Stage 0: Time Machine MVP Backend Fixes
+
+### Decision 10: Agent Cost Recording & Ledger Tracking
+- **Finding**: Historical calls to `/endpoint-usage` reported `agent_run` cost as 0.0 because `num_of_steps` was not multiplied by $0.016 into `data/tf_calls.jsonl`.
+- **Decision**: Enhanced `tinycore/tf_client.py` to extract `num_of_steps` (or step list length) and record `steps * 0.016` to both `CostLedger` and `data/tf_calls.jsonl`. Verified with comprehensive mocked unit tests in `tests/test_agent_cost.py`.
+
+### Decision 11: Real `type: fetch` Monitor Run Payload Verification
+- **Finding**: Executed live monitor run trigger against `https://httpbin.org/html`. The run payload directly provides `results[0].text` (full markdown), `is_baseline: bool`, `id: str` (run_id), and `latency_ms`.
+- **Decision**: The Time Machine processor consumes `results[0].text` directly from the monitor event payload without needing an extra roundtrip fetch, saving latency and network calls.
+
+### Decision 12: Dual Storage Backend (`SqliteStore` + `SupabaseStore`)
+- **Finding**: Supabase credentials provided in `.env` contain the client-side publishable key (`sb_publishable_...`) without DDL administration privileges or edge function deployment CLI access.
+- **Decision**: Implemented `store.py` with a pluggable backend interface: `SqliteStore` (fully persisted with WAL mode for dev, testing, and continuous operation) and `SupabaseStore` (for production Supabase PostgREST endpoints), selected via `STORE_BACKEND`. Schema migration written to `infra/supabase/timemachine.sql`.

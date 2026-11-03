@@ -13,9 +13,9 @@ from tinycore.tf_client import (
     TFSchemaMismatch
 )
 from tinycore.ledger import CostLedger, MonitorBudget, BudgetExceeded, QuotaExceeded
-from tinycore.normalize import clean_html, strip_noise, to_blocks, Block
+from tinycore.normalize import clean_html, strip_noise, to_blocks, markdown_to_blocks, Block
 from tinycore.differ import diff_blocks, Diff, ChangedBlock
-from tinycore.store import get_db, init_db, ScreenshotStore
+from tinycore.store import get_db, init_db, ScreenshotStore, SqliteStore, SupabaseStore, get_store
 from tinycore.evidence import Evidence, create_evidence
 from tinycore.events import fetch_unprocessed_events, mark_event_processed, is_already_processed
 from tinycore.api_common import create_app, get_endpoint_usage_summary
@@ -38,6 +38,7 @@ __all__ = [
     "clean_html",
     "strip_noise",
     "to_blocks",
+    "markdown_to_blocks",
     "Block",
     "diff_blocks",
     "Diff",
@@ -45,6 +46,9 @@ __all__ = [
     "get_db",
     "init_db",
     "ScreenshotStore",
+    "SqliteStore",
+    "SupabaseStore",
+    "get_store",
     "Evidence",
     "create_evidence",
     "fetch_unprocessed_events",

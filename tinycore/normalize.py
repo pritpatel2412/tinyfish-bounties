@@ -21,6 +21,7 @@ NOISE_PATTERNS = [
     r"\bjust now\b",
     # Last updated / modified lines
     r"(?i)\blast\s+(?:updated|modified|reviewed|checked)\s*[:\-]?\s*.*?(?:\n|$)",
+    r"(?i)\b(?:reviewed|checked|verified|generated)\s+(?:by|on|at)\b.*?(?:\n|$)",
     # Copyright notices and years
     r"(?i)(?:©|\bcopyright\b)\s*(?:\d{4}\s*[-–]\s*)?\d{4}\b.*?(?:\n|$)",
     # UUIDs
@@ -148,4 +149,85 @@ def to_blocks(text: str) -> list[Block]:
         current_block_lines.append(stripped)
 
     flush_block()
+    return blocks
+
+
+def markdown_to_blocks(md: str, ignore_selectors: list[str] | None = None) -> list[Block]:
+    """Segments Markdown text into structured Blocks:
+    - Headings (#, ##, ...) define heading_path hierarchy
+    - Table rows (| ... |) are segmented into individual blocks (table headers & separators skipped if purely structural)
+    - List items (*, -, +, 1.) are segmented into blocks
+    - Paragraphs (blank-line separated) are segmented into blocks
+    - Transient noise (dates, timestamps, 'last updated', copyright) is stripped during normalization
+    - Pure noise blocks (where strip_noise(text) == "") are discarded
+    - Numeric tokens ($29, 100k, etc.) are strictly kept intact
+    """
+    if not md:
+        return []
+
+    blocks: list[Block] = []
+    current_headings: list[str] = []
+    current_para_lines: list[str] = []
+
+    def make_block(content: str):
+        content = content.strip()
+        if not content:
+            return
+        # If the entire block is transient noise, drop it so date changes don't generate blocks
+        if not strip_noise(content):
+            return
+        path = " > ".join(current_headings) if current_headings else "root"
+        norm_hash = compute_norm_hash(content)
+        block_id = hashlib.sha256(f"{path}:{norm_hash}".encode("utf-8")).hexdigest()[:16]
+        blocks.append(Block(id=block_id, heading_path=path, text=content, norm_hash=norm_hash))
+
+    def flush_para():
+        nonlocal current_para_lines
+        if current_para_lines:
+            text_chunk = "\n".join(current_para_lines).strip()
+            make_block(text_chunk)
+            current_para_lines = []
+
+    lines = md.splitlines()
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            flush_para()
+            continue
+
+        # Ignore pure noise lines (e.g. standalone dates, 'last updated', copyright)
+        if not strip_noise(stripped):
+            continue
+
+        # 1. Heading check
+        m_head = re.match(r"^(#{1,6})\s+(.*)$", stripped)
+        if m_head:
+            flush_para()
+            level = len(m_head.group(1))
+            heading_text = m_head.group(2).strip()
+            while len(current_headings) >= level:
+                current_headings.pop()
+            current_headings.append(heading_text)
+            continue
+
+        # 2. Table row check: starts and ends with '|'
+        if stripped.startswith("|") and stripped.endswith("|"):
+            flush_para()
+            # Ignore table separator rows like |---|---| or |:---:|
+            if not re.sub(r"[|\-:\s]", "", stripped):
+                continue
+            make_block(stripped)
+            continue
+
+        # 3. List item check (*, -, +, 1.)
+        m_list = re.match(r"^(?:\*|-|\+|\d+\.)\s+(.+)$", stripped)
+        if m_list:
+            flush_para()
+            make_block(stripped)
+            continue
+
+        # 4. Paragraph lines
+        current_para_lines.append(stripped)
+
+    flush_para()
     return blocks
