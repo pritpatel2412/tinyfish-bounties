@@ -362,6 +362,31 @@ class TF:
             log_tf_call("monitor_run", endpoint_url, False, latency_ms, cost_usd=0.0)
             raise e
 
+    def monitors_list(self) -> list[dict]:
+        """List all monitors on the account."""
+        endpoint_url = f"{AGENT_BASE_URL}/v1/monitors"
+        resp = self._execute_http("GET", endpoint_url, timeout=30.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("monitors", [])
+        return []
+
+    def wallet_get(self) -> dict:
+        """Get account wallet balance."""
+        endpoint_url = f"{AGENT_BASE_URL}/v1/wallet"
+        resp = self._execute_http("GET", endpoint_url, timeout=30.0)
+        if resp.status_code == 200:
+            return resp.json()
+        return {}
+
+    def monitor_resume(self, monitor_id: str) -> dict:
+        """Resume a paused monitor via PATCH."""
+        endpoint_url = f"{AGENT_BASE_URL}/v1/monitors/{monitor_id}"
+        resp = self._execute_http("PATCH", endpoint_url, json_data={"status": "active"}, timeout=30.0)
+        if resp.status_code == 200:
+            return resp.json()
+        return {}
+
     def monitor_delete(self, monitor_id: str, app: str | None = None) -> None:
         """Delete monitor and release allocated budget quota."""
         endpoint_url = f"{AGENT_BASE_URL}/v1/monitors/{monitor_id}"

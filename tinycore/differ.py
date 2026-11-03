@@ -98,52 +98,56 @@ def compute_numeric_deltas(before_text: str, after_text: str) -> list[dict]:
 
 def diff_blocks(old: list[Block], new: list[Block]) -> Diff:
     """Computes a structured diff between old and new blocks."""
-    # 1. Exact match on norm_hash
-    unmatched_old = []
-    new_by_hash: dict[str, list[Block]] = {}
-    for b in new:
-        new_by_hash.setdefault(b.norm_hash, []).append(b)
+    # 1. Exact match on norm_hash + heading_path (tracked by new index to handle duplicates)
+    unmatched_old: list[Block] = []
+    new_by_hash: dict[str, list[tuple[int, Block]]] = {}
+    for idx, b in enumerate(new):
+        new_by_hash.setdefault(b.norm_hash, []).append((idx, b))
 
-    matched_new_ids = set()
+    matched_new_indices: set[int] = set()
 
     for o_block in old:
         candidates = new_by_hash.get(o_block.norm_hash, [])
         matched = False
-        for c in candidates:
-            if c.id not in matched_new_ids and c.heading_path == o_block.heading_path:
-                matched_new_ids.add(c.id)
+        for idx, c in candidates:
+            if idx not in matched_new_indices and c.heading_path == o_block.heading_path:
+                matched_new_indices.add(idx)
                 matched = True
                 break
         if not matched:
             unmatched_old.append(o_block)
 
-    unmatched_new = [b for b in new if b.id not in matched_new_ids]
+    unmatched_new_entries: list[tuple[int, Block]] = [
+        (idx, b) for idx, b in enumerate(new) if idx not in matched_new_indices
+    ]
 
     added: list[Block] = []
     removed: list[Block] = []
     changed: list[ChangedBlock] = []
 
     # 2. Match remaining blocks within same heading_path by similarity >= 0.6
-    used_new_in_changed = set()
+    used_new_indices: set[int] = set()
 
     for o_block in unmatched_old:
         best_sim = 0.0
-        best_match = None
-        for n_block in unmatched_new:
-            if n_block.id in used_new_in_changed:
+        best_match_idx = None
+        best_match_block = None
+        for idx, n_block in unmatched_new_entries:
+            if idx in used_new_indices:
                 continue
             if n_block.heading_path == o_block.heading_path:
                 sim = difflib.SequenceMatcher(None, o_block.text, n_block.text).ratio()
                 if sim > best_sim:
                     best_sim = sim
-                    best_match = n_block
+                    best_match_idx = idx
+                    best_match_block = n_block
 
-        if best_match and best_sim >= 0.6:
-            used_new_in_changed.add(best_match.id)
-            deltas = compute_numeric_deltas(o_block.text, best_match.text)
+        if best_match_block and best_match_idx is not None and best_sim >= 0.6:
+            used_new_indices.add(best_match_idx)
+            deltas = compute_numeric_deltas(o_block.text, best_match_block.text)
             changed.append(ChangedBlock(
                 before=o_block.text,
-                after=best_match.text,
+                after=best_match_block.text,
                 heading_path=o_block.heading_path,
                 similarity=best_sim,
                 numeric_delta=deltas
@@ -151,8 +155,8 @@ def diff_blocks(old: list[Block], new: list[Block]) -> Diff:
         else:
             removed.append(o_block)
 
-    for n_block in unmatched_new:
-        if n_block.id not in used_new_in_changed:
+    for idx, n_block in unmatched_new_entries:
+        if idx not in used_new_indices:
             added.append(n_block)
 
     is_empty = (len(added) == 0 and len(removed) == 0 and len(changed) == 0)
