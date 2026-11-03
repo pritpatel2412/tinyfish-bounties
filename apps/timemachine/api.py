@@ -26,19 +26,22 @@ from apps.timemachine.processor import (
     processor_worker,
     insert_incoming_event
 )
+from apps.timemachine.watchdog import watchdog_worker
 
 logger = logging.getLogger("timemachine.api")
 
 
 @asynccontextmanager
 async def tm_lifespan(app: FastAPI):
-    # Startup: Launch background processor worker
+    # Startup: Launch background processor worker and hourly watchdog
     processor_worker.start()
-    logger.info("Time Machine API initialized; processor worker started.")
+    watchdog_worker.start()
+    logger.info("Time Machine API initialized; processor and watchdog workers started.")
     yield
     # Shutdown
     processor_worker.stop()
-    logger.info("Time Machine API shutdown; processor worker stopped.")
+    watchdog_worker.stop()
+    logger.info("Time Machine API shutdown; workers stopped.")
 
 
 app = create_app(
