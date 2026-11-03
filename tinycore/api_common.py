@@ -85,9 +85,9 @@ def get_endpoint_usage_summary() -> dict:
     }
 
 
-def create_app(title: str = "TinyFish Service", version: str = "1.0.0") -> FastAPI:
+def create_app(title: str = "TinyFish Service", version: str = "1.0.0", lifespan=None) -> FastAPI:
     """Creates a configured FastAPI application with standard monitoring routes and error envelopes."""
-    app = FastAPI(title=title, version=version)
+    app = FastAPI(title=title, version=version, lifespan=lifespan)
 
     # CORS
     app.add_middleware(
