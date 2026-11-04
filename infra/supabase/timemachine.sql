@@ -67,3 +67,40 @@ CREATE TABLE IF NOT EXISTS checks (
 CREATE INDEX IF NOT EXISTS idx_checks_page_observed ON checks (page_id, observed_at);
 CREATE INDEX IF NOT EXISTS idx_checks_run_id ON checks (run_id);
 
+-- Row Level Security policies allowing API operations via project keys
+ALTER TABLE pages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE diffs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE checks ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    DROP POLICY IF EXISTS "Allow all on pages" ON pages;
+    CREATE POLICY "Allow all on pages" ON pages FOR ALL USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Allow all on versions" ON versions;
+    CREATE POLICY "Allow all on versions" ON versions FOR ALL USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Allow all on diffs" ON diffs;
+    CREATE POLICY "Allow all on diffs" ON diffs FOR ALL USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Allow all on checks" ON checks;
+    CREATE POLICY "Allow all on checks" ON checks FOR ALL USING (true) WITH CHECK (true);
+END $$;
+
+-- Storage bucket 'shots' for screenshot archival
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('shots', 'shots', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DO $$
+BEGIN
+    DROP POLICY IF EXISTS "Public Access on shots" ON storage.objects;
+    CREATE POLICY "Public Access on shots" ON storage.objects FOR SELECT USING (bucket_id = 'shots');
+
+    DROP POLICY IF EXISTS "Public Insert on shots" ON storage.objects;
+    CREATE POLICY "Public Insert on shots" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'shots');
+
+    DROP POLICY IF EXISTS "Public Update on shots" ON storage.objects;
+    CREATE POLICY "Public Update on shots" ON storage.objects FOR UPDATE USING (bucket_id = 'shots');
+END $$;

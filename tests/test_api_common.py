@@ -1,6 +1,6 @@
 """
 tests/test_api_common.py
-Tests FastAPI common endpoints: /health, /endpoint-usage, and error handling envelope.
+Tests FastAPI common endpoints: /health, /admin/health, /endpoint-usage, and error handling envelope.
 """
 
 from fastapi.testclient import TestClient
@@ -11,16 +11,29 @@ def test_api_common_health_and_endpoint_usage():
     app = create_app(title="Test Service", version="0.1.0")
     client = TestClient(app, raise_server_exceptions=False)
 
-    # 1. Health check
+    # 1. Public Health check
     r_health = client.get("/health")
     assert r_health.status_code == 200
     data = r_health.json()
     assert data["status"] == "healthy"
-    assert "ledger" in data
-    assert "monitors" in data
-    assert data["monitors"]["global_cap"] == 50
+    assert "uptime_s" in data
+    assert "version" in data
+    # Public health must not expose spend or wallet
+    assert "wallet_balance_usd" not in data
+    assert "daily_spend_usd" not in data
+    assert "ledger" not in data
 
-    # 2. Endpoint usage
+    # 2. Admin Health check
+    r_admin = client.get("/admin/health")
+    assert r_admin.status_code == 200
+    admin_data = r_admin.json()
+    assert admin_data["status"] == "healthy"
+    assert "ledger" in admin_data
+    assert "monitors" in admin_data
+    assert admin_data["monitors"]["global_cap"] == 50
+    assert "daily_spend_usd" in admin_data
+
+    # 3. Endpoint usage
     r_usage = client.get("/endpoint-usage")
     assert r_usage.status_code == 200
     usage_data = r_usage.json()

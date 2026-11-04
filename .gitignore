@@ -1,6 +1,42 @@
+# Environments and secrets
 .env
+.env.*
+!.env.example
 .venv/
-__pycache__/
+env/
+venv/
+ENV/
+
+# Database and local data
 data/
 !data/pages_vetted.json
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Logs and outputs
+*.log
+tf_calls.jsonl
+local_shots/
+shots/
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

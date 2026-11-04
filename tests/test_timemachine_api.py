@@ -116,12 +116,20 @@ def test_health_and_endpoint_usage(client):
     data = resp.json()
     assert data["status"] in ("healthy", "degraded")
     assert "processor_heartbeat_age_s" in data
-    assert "unprocessed_events_count" in data
-    assert "monitors_active" in data
-    assert "monitors_paused" in data
-    assert "store_backend" in data
-    assert "git_sha" in data
     assert "uptime_s" in data
+    assert "version" in data
+    assert "wallet_balance_usd" not in data
+    assert "daily_spend_usd" not in data
+
+    resp_admin = client.get("/admin/health")
+    assert resp_admin.status_code == 200
+    admin_data = resp_admin.json()
+    assert "unprocessed_events_count" in admin_data
+    assert "monitors_active" in admin_data
+    assert "monitors_paused" in admin_data
+    assert "store_backend" in admin_data
+    assert "git_sha" in admin_data
+    assert "ledger" in admin_data
 
     resp2 = client.get("/endpoint-usage")
     assert resp2.status_code == 200

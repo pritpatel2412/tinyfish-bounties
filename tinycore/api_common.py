@@ -1,17 +1,19 @@
 import time
+import secrets
 """
 tinycore/api_common.py
 Standardized FastAPI application factory providing:
 - Standard CORS middleware
 - Consistent JSON error envelopes: {"error": {"code": "...", "message": "...", "source_url": "..."}}
-- /health: Poller heartbeat, ledger daily spend, monitor allocations & budget
+- /health: Public health check (status, uptime, processor heartbeat, version)
+- /admin/health: Protected telemetry (wallet balance, daily spend, monitors, ledger) requiring X-Admin-Token
 - /endpoint-usage: Aggregates data/tf_calls.jsonl by endpoint with call counts, latency, and estimated cost
 """
 
 import os
 import json
 from datetime import datetime, timezone
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -123,6 +125,38 @@ def create_app(title: str = "TinyFish Service", version: str = "1.0.0", lifespan
 
     @app.get("/health")
     def health_check():
+        """Public health check: returns status, uptime, processor heartbeat age, and version."""
+        now_epoch = time.time()
+        now_utc = datetime.now(timezone.utc).isoformat()
+        uptime_s = round(now_epoch - _app_boot_epoch, 2)
+
+        extra = {}
+        if health_provider:
+            try:
+                extra = health_provider()
+            except Exception:
+                pass
+
+        return {
+            "status": extra.get("status", "healthy"),
+            "uptime_s": uptime_s,
+            "processor_heartbeat_age_s": extra.get("processor_heartbeat_age_s", 0.0),
+            "version": version,
+            "timestamp": now_utc
+        }
+
+    @app.get("/admin/health")
+    def admin_health_check(request: Request):
+        """Admin-protected health & telemetry: requires X-Admin-Token."""
+        admin_token = os.getenv("ADMIN_TOKEN", "").strip()
+        is_prod = os.getenv("ENV") == "production" or os.getenv("RENDER") in ("true", "1")
+        token_hdr = request.headers.get("x-admin-token") or ""
+        if admin_token:
+            if not token_hdr or not secrets.compare_digest(token_hdr, admin_token):
+                raise HTTPException(status_code=401, detail="Unauthorized: invalid or missing X-Admin-Token")
+        elif is_prod:
+            raise HTTPException(status_code=401, detail="X-Admin-Token required (ADMIN_TOKEN not set in production)")
+
         now_epoch = time.time()
         now_utc = datetime.now(timezone.utc).isoformat()
         daily_spend = CostLedger.get_daily_spend()
@@ -153,6 +187,7 @@ def create_app(title: str = "TinyFish Service", version: str = "1.0.0", lifespan
 
         return {
             "status": extra.get("status", "healthy"),
+            "version": version,
             "timestamp": now_utc,
             "uptime_s": uptime_s,
             "processor_heartbeat_age_s": extra.get("processor_heartbeat_age_s", 0.0),

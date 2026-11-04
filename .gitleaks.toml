@@ -1,0 +1,20 @@
+[extend]
+useDefault = true
+
+[rules]
+description = "Gitleaks configuration for TinyFish Bounties"
+
+[allowlist]
+description = "Allowlisted test fixtures and placeholders"
+paths = [
+    '''tests/fixtures/''',
+    '''\.env\.example''',
+    '''tests/''',
+]
+regexes = [
+    '''sb_publishable_test_token''',
+    '''your_.*_here''',
+    '''test_admin_token''',
+    '''test_webhook_secret''',
+    '''fake-token''',
+]
