@@ -24,6 +24,5 @@ COPY . .
 # Expose HTTP port
 EXPOSE 8000
 
-# Run FastAPI via Uvicorn
-CMD ["uvicorn", "apps.timemachine.api:app", "--host", "0.0.0.0", "--port", "8000"]
-
+# Run FastAPI via Uvicorn binding dynamically to Render's $PORT
+CMD ["sh", "-c", "uvicorn apps.timemachine.api:app --host 0.0.0.0 --port ${PORT:-8000}"]

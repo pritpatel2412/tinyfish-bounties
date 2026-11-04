@@ -114,9 +114,14 @@ def test_health_and_endpoint_usage(client):
     resp = client.get("/health")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["status"] == "healthy"
-    assert "ledger" in data
-    assert "monitors" in data
+    assert data["status"] in ("healthy", "degraded")
+    assert "processor_heartbeat_age_s" in data
+    assert "unprocessed_events_count" in data
+    assert "monitors_active" in data
+    assert "monitors_paused" in data
+    assert "store_backend" in data
+    assert "git_sha" in data
+    assert "uptime_s" in data
 
     resp2 = client.get("/endpoint-usage")
     assert resp2.status_code == 200

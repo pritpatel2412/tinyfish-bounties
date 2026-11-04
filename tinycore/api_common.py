@@ -1,3 +1,4 @@
+import time
 """
 tinycore/api_common.py
 Standardized FastAPI application factory providing:
@@ -85,7 +86,9 @@ def get_endpoint_usage_summary() -> dict:
     }
 
 
-def create_app(title: str = "TinyFish Service", version: str = "1.0.0", lifespan=None) -> FastAPI:
+_app_boot_epoch = time.time()
+
+def create_app(title: str = "TinyFish Service", version: str = "1.0.0", lifespan=None, health_provider=None) -> FastAPI:
     """Creates a configured FastAPI application with standard monitoring routes and error envelopes."""
     app = FastAPI(title=title, version=version, lifespan=lifespan)
 
@@ -120,20 +123,53 @@ def create_app(title: str = "TinyFish Service", version: str = "1.0.0", lifespan
 
     @app.get("/health")
     def health_check():
+        now_epoch = time.time()
         now_utc = datetime.now(timezone.utc).isoformat()
         daily_spend = CostLedger.get_daily_spend()
         max_daily = CostLedger.get_max_daily()
         budget_status = MonitorBudget.get_status()
+        uptime_s = round(now_epoch - _app_boot_epoch, 2)
+
+        extra = {}
+        if health_provider:
+            try:
+                extra = health_provider()
+            except Exception:
+                pass
+
+        # Git sha resolution
+        git_sha = extra.get("git_sha")
+        if not git_sha:
+            git_sha = os.getenv("GIT_SHA") or os.getenv("RENDER_GIT_COMMIT")
+            if not git_sha:
+                try:
+                    import subprocess
+                    res = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, timeout=2)
+                    if res.returncode == 0:
+                        git_sha = res.stdout.strip()
+                except Exception:
+                    pass
+            git_sha = (git_sha or "unknown")[:8]
 
         return {
-            "status": "healthy",
+            "status": extra.get("status", "healthy"),
             "timestamp": now_utc,
+            "uptime_s": uptime_s,
+            "processor_heartbeat_age_s": extra.get("processor_heartbeat_age_s", 0.0),
+            "unprocessed_events_count": extra.get("unprocessed_events_count", 0),
+            "monitors_active": extra.get("monitors_active", budget_status.get("total_active", 0)),
+            "monitors_paused": extra.get("monitors_paused", 0),
+            "wallet_balance_usd": extra.get("wallet_balance_usd", None),
+            "daily_spend_usd": round(daily_spend, 4),
+            "store_backend": os.getenv("STORE_BACKEND", "sqlite").strip().lower(),
+            "git_sha": git_sha,
             "ledger": {
                 "today_spend_usd": round(daily_spend, 4),
                 "max_daily_usd": max_daily,
                 "headroom_usd": round(max(0.0, max_daily - daily_spend), 4)
             },
-            "monitors": budget_status
+            "monitors": budget_status,
+            "degraded_reasons": extra.get("degraded_reasons", [])
         }
 
     @app.get("/endpoint-usage")

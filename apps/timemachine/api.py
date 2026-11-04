@@ -30,7 +30,8 @@ from tinycore.tf_client import TF
 from apps.timemachine.capture import add_page
 from apps.timemachine.processor import (
     processor_worker,
-    insert_incoming_event
+    insert_incoming_event,
+    get_unprocessed_events
 )
 from apps.timemachine.watchdog import watchdog_worker
 
@@ -49,7 +50,9 @@ async def tm_lifespan(app: FastAPI):
     # Startup: Launch background processor worker and hourly watchdog
     processor_worker.start()
     watchdog_worker.start()
-    logger.info("Time Machine API initialized; processor and watchdog workers started.")
+    # Cold-start backlog drain: process any pending webhook events immediately on startup
+    processor_worker.wake()
+    logger.info("Time Machine API initialized; processor and watchdog workers started with cold-start wake.")
     yield
     # Shutdown
     processor_worker.stop()
@@ -57,11 +60,74 @@ async def tm_lifespan(app: FastAPI):
     logger.info("Time Machine API shutdown; workers stopped.")
 
 
+
+def get_tm_health() -> dict:
+    """Operational health check provider for Time Machine."""
+    store = get_store()
+    now_epoch = time.time()
+    heartbeat_age_s = round(now_epoch - getattr(processor_worker, "last_run_epoch", now_epoch), 2)
+
+    # Unprocessed events count
+    unprocessed_count = 0
+    try:
+        unproc = get_unprocessed_events(store)
+        unprocessed_count = len(unproc)
+    except Exception:
+        pass
+
+    # Monitors active vs paused
+    all_pages = [p for p in store.list_pages() if not p.get("is_test")]
+    monitors_active = len([p for p in all_pages if p.get("active")])
+    monitors_paused = len([p for p in all_pages if not p.get("active") or p.get("status") == "paused"])
+
+    # Wallet balance
+    wallet_balance = None
+    if watchdog_worker.last_result:
+        wallet_balance = watchdog_worker.last_result.get("wallet_balance_usd")
+    if wallet_balance is None:
+        try:
+            api_key = os.getenv("TINYFISH_API_KEY")
+            if api_key:
+                tf = TF(api_key=api_key)
+                w = tf.wallet_get()
+                bal_str = w.get("available_balance") or w.get("balance")
+                if bal_str is not None:
+                    wallet_balance = round(float(bal_str), 4)
+        except Exception:
+            pass
+
+    # Degradation check
+    is_degraded = False
+    degraded_reasons = []
+    if heartbeat_age_s > 600:
+        is_degraded = True
+        degraded_reasons.append(f"Processor heartbeat stale ({heartbeat_age_s}s)")
+    if wallet_balance is not None and wallet_balance < 5.0:
+        is_degraded = True
+        degraded_reasons.append(f"Low wallet balance (${wallet_balance})")
+
+    status_str = "degraded" if is_degraded else "healthy"
+    if is_degraded:
+        logger.warning(f"[HEALTH DEGRADED] {', '.join(degraded_reasons)}")
+
+    return {
+        "status": status_str,
+        "processor_heartbeat_age_s": heartbeat_age_s,
+        "unprocessed_events_count": unprocessed_count,
+        "monitors_active": monitors_active,
+        "monitors_paused": monitors_paused,
+        "wallet_balance_usd": wallet_balance,
+        "degraded_reasons": degraded_reasons
+    }
+
+
 app = create_app(
     title="Time Machine API",
     version="1.0.0",
-    lifespan=tm_lifespan
+    lifespan=tm_lifespan,
+    health_provider=get_tm_health
 )
+
 
 
 
@@ -75,6 +141,9 @@ _export_cache = {
     "cached_at": 0.0,
     "payloads": {}
 }
+
+
+
 
 
 def verify_admin_token(request: Request):

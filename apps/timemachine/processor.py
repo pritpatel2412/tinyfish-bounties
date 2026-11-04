@@ -391,6 +391,7 @@ class ProcessorWorker:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self.last_run_at: str | None = None
+        self.last_run_epoch: float = time.time()
         self.events_processed_total: int = 0
 
     def start(self):
@@ -413,6 +414,7 @@ class ProcessorWorker:
         cnt = process_pending_events(store=self.store, tf=self.tf)
         self.events_processed_total += cnt
         self.last_run_at = datetime.now(timezone.utc).isoformat()
+        self.last_run_epoch = time.time()
         return cnt
 
     def _run_loop(self):
@@ -421,6 +423,7 @@ class ProcessorWorker:
                 cnt = process_pending_events(store=self.store, tf=self.tf)
                 self.events_processed_total += cnt
                 self.last_run_at = datetime.now(timezone.utc).isoformat()
+                self.last_run_epoch = time.time()
             except Exception as e:
                 logger.error(f"Error in processor loop: {e}", exc_info=True)
             self._stop_event.wait(timeout=self.interval)
