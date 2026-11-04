@@ -359,3 +359,30 @@ When a scheduled check detects a change (or finishes a run), TinyFish POSTs to `
   - `store.py` provides `SqliteStore` and `SupabaseStore` through `get_store()`.
   - `ScreenshotStore` targets Supabase Storage bucket `shots` (with local `/data/shots` fallback).
   - Migration schema defined in `infra/supabase/timemachine.sql`.
+
+---
+
+## 8. Time Machine Live Deployment & Seeding Metrics (2026-11-04)
+
+- **Live Monitors on Account**: 34 active monitors (cap: 50).
+- **Tracked Pages Seeded**: 25 pages across 6 categories:
+  - 12 AI developer tools (Groq, Gemini, OpenAI, Replit, Supabase, Render, Cursor, Copilot, HuggingFace, Netlify, Resend)
+  - 4 Changelogs & Release Notes (Vercel changelog, Anthropic release notes, Groq status, OpenAI status)
+  - 4 Legal & Terms (OpenAI ToU, Google Privacy, GitHub Terms, Vercel Terms)
+  - 3 Visas & Immigration (UK Student Visa, UK Skilled Worker Visa, USCIS Alerts)
+  - 1 SaaS Pricing (Acme Cloud Platform Pricing live test page)
+  - 1 Fintech Billing (Stripe Pricing)
+- **Monitoring Checks in 24h**: 26 total checks logged in database:
+  - 25 Baselines
+  - 1 Real Material Change detected and classified
+- **Wallet Balance**: **$36.36 USD** ($0.054 daily spend, $2.446 headroom under $2.50 daily ceiling).
+- **Screenshots Captured**: 32 screenshots captured via Browser CDP API (`POST https://api.browser.tinyfish.ai` + Playwright) stored in `data/shots/`.
+- **Judge Samples**: Generated and saved in `samples/timemachine/`:
+  - `pages.json` (all tracked pages metadata and version counts)
+  - `timeline.json` (descending chronological version history)
+  - `asof_before.json` (point-in-time state before price increase: $29/mo)
+  - `asof_after.json` (point-in-time state after price increase: $49/mo)
+  - `diff_1_to_2.json` (structured diff with numeric delta: $29 -> $49/mo)
+  - `changes.json` (global change feed with materiality: 0.9)
+  - `logs.json` (public audit log of monitoring checks)
+  - `export.json` (complete 2MB database dump for judges)

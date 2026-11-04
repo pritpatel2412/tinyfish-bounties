@@ -362,6 +362,9 @@ class TF:
             log_tf_call("monitor_run", endpoint_url, False, latency_ms, cost_usd=0.0)
             raise e
 
+    # Alias for convenience
+    monitor_run = monitor_trigger_run
+
     def monitors_list(self) -> list[dict]:
         """List all monitors on the account."""
         endpoint_url = f"{AGENT_BASE_URL}/v1/monitors"

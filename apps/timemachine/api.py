@@ -456,3 +456,70 @@ async def webhook_receiver(request: Request):
         "status": "received",
         "event_id": event_id
     }
+
+
+# --- Mutable Test Page (for live change verification) ---
+
+_test_page_state = {
+    "title": "Acme Cloud Platform Pricing",
+    "plan_name": "Standard Plan",
+    "price": "$29/month",
+    "features": [
+        "Up to 5 team members",
+        "10GB cloud storage",
+        "Standard email support"
+    ],
+    "last_updated": "2026-11-01T00:00:00Z"
+}
+
+
+@app.get("/testpage")
+def get_testpage():
+    """Serves an HTML page representing a live pricing table that can be dynamically edited."""
+    from fastapi.responses import HTMLResponse
+    features_html = "\n".join(f"      <li>{f}</li>" for f in _test_page_state["features"])
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+  <title>{_test_page_state["title"]}</title>
+  <style>
+    body {{ font-family: sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; }}
+    .card {{ border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; }}
+    .price {{ font-size: 2rem; font-weight: bold; color: #2563eb; margin: 1rem 0; }}
+  </style>
+</head>
+<body>
+  <h1>{_test_page_state["title"]}</h1>
+  <div class="card">
+    <h2>{_test_page_state["plan_name"]}</h2>
+    <div class="price">{_test_page_state["price"]}</div>
+    <ul>
+{features_html}
+    </ul>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
+
+
+class TestPageEditRequest(BaseModel):
+    title: str | None = None
+    plan_name: str | None = None
+    price: str | None = None
+    features: list[str] | None = None
+
+
+@app.post("/testpage/edit")
+def edit_testpage(req: TestPageEditRequest):
+    """Mutates the test page to trigger a real detectable content change."""
+    global _test_page_state
+    if req.title:
+        _test_page_state["title"] = req.title
+    if req.plan_name:
+        _test_page_state["plan_name"] = req.plan_name
+    if req.price:
+        _test_page_state["price"] = req.price
+    if req.features is not None:
+        _test_page_state["features"] = req.features
+    _test_page_state["last_updated"] = datetime.now(timezone.utc).isoformat()
+    return {"status": "updated", "state": _test_page_state}

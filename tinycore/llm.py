@@ -15,8 +15,8 @@ from groq import Groq, RateLimitError
 from dotenv import dotenv_values
 
 CACHE_DIR = os.path.join("data", "llm_cache")
-DEFAULT_MODEL_CLASSIFY = "llama-3.1-8b-instant"
-DEFAULT_MODEL_EXTRACT = "llama-3.3-70b-versatile"
+DEFAULT_MODEL_CLASSIFY = "qwen/qwen3.8-27b"
+DEFAULT_MODEL_EXTRACT = "qwen/qwen3.8-27b"
 
 
 def _get_groq_client() -> Groq:

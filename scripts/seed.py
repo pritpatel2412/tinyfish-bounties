@@ -8,6 +8,10 @@ Seeds vetted pages from data/pages_vetted.json into Time Machine:
 
 import os
 import sys
+
+# Ensure repository root is on sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import time
 import json
 from dotenv import dotenv_values
@@ -37,11 +41,11 @@ def main():
 
     # Initial status
     wallet_info = tf.wallet_get()
-    balance = wallet_info.get("balance") or wallet_info.get("wallet", {}).get("balance")
+    balance = wallet_info.get("available_balance") or wallet_info.get("balance")
     print(f"=== Seeding Time Machine Pages (Wallet Balance: ${balance}) ===")
 
     monitors_initial = tf.monitors_list()
-    active_count = len([m for m in monitors_initial if m.get("status") == "active"])
+    active_count = len([m for m in monitors_initial if str(m.get("status", "")).upper() != "PAUSED"])
     print(f"Current active monitors on account: {active_count}/50")
     print(f"Pages to seed: {len(pages)}\n")
 
@@ -84,7 +88,7 @@ def main():
         # Live count check
         try:
             cur_mons = tf.monitors_list()
-            active_now = len([m for m in cur_mons if m.get("status") == "active"])
+            active_now = len([m for m in cur_mons if str(m.get("status", "")).upper() != "PAUSED"])
             print(f"   -> Live account active monitors: {active_now}/50")
         except Exception:
             pass
@@ -98,13 +102,7 @@ def main():
     print("=" * 60)
     print(f"Successfully seeded: {seeded_count}")
     print(f"Skipped (already existing): {skipped_count}")
-    total_in_store = len(store.list_pages())
-    print(f"Total pages in Time Machine store: {total_in_store}")
-
-    final_wallet = tf.wallet_get()
-    final_balance = final_wallet.get("balance") or final_wallet.get("wallet", {}).get("balance")
-    print(f"Final wallet balance: ${final_balance}")
-    print("=" * 60)
+    print(f"Total pages in DB: {len(store.list_pages())}")
 
 
 if __name__ == "__main__":

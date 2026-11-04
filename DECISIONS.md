@@ -56,3 +56,21 @@
 ### Decision 12: Dual Storage Backend (`SqliteStore` + `SupabaseStore`)
 - **Finding**: Supabase credentials provided in `.env` contain the client-side publishable key (`sb_publishable_...`) without DDL administration privileges or edge function deployment CLI access.
 - **Decision**: Implemented `store.py` with a pluggable backend interface: `SqliteStore` (fully persisted with WAL mode for dev, testing, and continuous operation) and `SupabaseStore` (for production Supabase PostgREST endpoints), selected via `STORE_BACKEND`. Schema migration written to `infra/supabase/timemachine.sql`.
+
+## 2026-11-04 — Stage 1 to Stage 7: Time Machine Production Build & Live Verification
+
+### Decision 13: Block Differ Matching by Positional Index
+- **Finding**: During stability vetting, pages repeating identical text blocks under the same heading (e.g. repeated buttons like "Get started" or table cells) collided on block IDs derived from `f"{heading_path}:{norm_hash}"`. Differ matched only the first block, causing false-positive "removed" diffs.
+- **Decision**: Updated `tinycore/differ.py` to match new blocks by their positional index `idx` in the `new` list rather than static hash IDs, completely eliminating false-positive diffs on Stripe, Netlify, Render, and Gov.uk.
+
+### Decision 14: Strict Run ID Idempotency & O(1) Checks Query
+- **Finding**: Scanning `get_checks(limit=500)` for run_id duplicate detection risked missing older checks on high-traffic pages and resulted in $O(N)$ overhead.
+- **Decision**: Added `get_check_by_run_id(run_id)` with direct database index lookup (`checks(run_id)`) across both `SqliteStore` and `SupabaseStore`.
+
+### Decision 15: Groq Model Selection (`qwen/qwen3.8-27b`)
+- **Finding**: Legacy `llama-3.1-8b-instant` was deprecated on Groq API endpoint returning 404 `model_not_found`.
+- **Decision**: Switched Groq default model in `tinycore/llm.py` to `qwen/qwen3.8-27b` which is active, ultra-fast (<800ms), and delivers exact JSON classifications.
+
+### Decision 16: Live Mutable Test Page Architecture
+- **Finding**: Proving live change detection requires a mutable remote HTTP endpoint that TinyFish monitors can access from the public internet.
+- **Decision**: Utilized `webhook.site` with remote `PUT /token/{id}` content management. Created test page with initial pricing ($29/mo), captured baseline v1 + screenshot, mutated to $49/mo + upgraded features, triggered `POST /v1/monitors/{id}/runs`, and verified complete pipeline: processor detected change -> captured v2 screenshot via CDP -> computed structured diff -> Groq classified price increase -> stored Version 2 -> exported 8 judge samples.
