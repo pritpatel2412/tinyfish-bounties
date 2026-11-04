@@ -106,3 +106,12 @@
   3. Reorganizing the monorepo cleanly into `tinycore/` (shared foundation), `apps/timemachine/` (live MVP), `apps/tinyverify/` (in progress), `apps/site2mcp/` (in progress), and `docs/specs/`.
   4. Authoring exhaustive flagship documentation, sequence diagrams, before/after diff illustrations, and verified OpenAPI / curl specifications.
 - **Decision**: Implemented `scripts/scan_secrets.py` and configured `.gitleaks.toml`. Reorganized repository layout and verified all 55 offline unit and integration tests remain 100% green. Authored root `README.md`, `apps/timemachine/README.md`, `docs/ARCHITECTURE.md`, `docs/TINYFISH_USAGE.md`, `docs/API_TIMEMACHINE.md`, and `docs/OPERATIONS.md`. Configured GitHub Actions CI workflow (`.github/workflows/ci.yml`). Renamed master branch to `main`, pushed to `https://github.com/pritpatel2412/tinyfish-bounties.git`, and tagged release `v0.1.0-timemachine`.
+
+
+### Decision 25: Diagnosis of Scheduled Monitoring Flow & Missing Webhooks (Prompt 10 Part A)
+- **Finding**: Running `scripts/diagnose_scheduled_flow.py` against live TinyFish and Supabase endpoints revealed:
+  1. 24 of 28 TinyFish monitors had an `<EMPTY>` `webhook_url`, and 4 pointed to a development `smee.io` relay.
+  2. The `monitor_events` table did not exist in Supabase (`HTTP 404`).
+  3. The Supabase Edge Function `tf-webhook` was not deployed (`HTTP 404`).
+  4. While ~114 scheduled runs were expected and billed on TinyFish cloud (~$1.24 wallet reduction across ~247 operations), zero events were received on the server because the webhook destination was unreachable or unconfigured.
+- **Decision**: Documented all diagnostic findings. Prepared `infra/supabase/schema.sql` (with `monitor_events` and RLS policies) and updated `infra/supabase/functions/tf-webhook/index.ts` with asynchronous Render wake notification. Halted mutations until user completes mandatory Supabase and Render dashboard setup.
