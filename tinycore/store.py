@@ -208,6 +208,15 @@ class SqliteStore:
         finally:
             conn.close()
 
+    def delete_page(self, page_id: str) -> bool:
+        conn = self._conn()
+        try:
+            with conn:
+                cur = conn.execute("DELETE FROM pages WHERE id = ?", (page_id,))
+                return cur.rowcount > 0
+        finally:
+            conn.close()
+
     def update_page(self, page_id: str, updates: dict) -> dict | None:
         conn = self._conn()
         try:
@@ -296,28 +305,12 @@ class SqliteStore:
             conn.close()
 
     def update_version(self, version_id: str, updates: dict) -> dict | None:
-        conn = self._conn()
-        try:
-            set_clauses = []
-            params = []
-            for k, v in updates.items():
-                if k in ("id", "page_id", "version_no"):
-                    continue
-                set_clauses.append(f"{k} = ?")
-                if k in ("blocks", "classification") and not isinstance(v, str) and v is not None:
-                    params.append(json.dumps(v))
-                else:
-                    params.append(v)
-            if not set_clauses:
-                return None
-            params.append(version_id)
-            with conn:
-                conn.execute(f"UPDATE versions SET {', '.join(set_clauses)} WHERE id = ?", tuple(params))
-            cur = conn.execute("SELECT * FROM versions WHERE id = ?", (version_id,))
-            row = cur.fetchone()
-            return dict(row) if row else None
-        finally:
-            conn.close()
+        url = f"{self.sb_url}/rest/v1/versions?id=eq.{version_id}"
+        resp = self.client.patch(url, headers=self.headers, json=updates)
+        if resp.status_code == 200:
+            arr = resp.json()
+            return arr[0] if arr else None
+        return None
 
     def get_latest_version(self, page_id: str) -> dict | None:
         conn = self._conn()
@@ -518,6 +511,11 @@ class SupabaseStore:
         if resp.status_code == 200:
             return resp.json()
         return []
+
+    def delete_page(self, page_id: str) -> bool:
+        url = f"{self.sb_url}/rest/v1/pages?id=eq.{page_id}"
+        resp = self.client.delete(url, headers=self.headers)
+        return resp.status_code in (200, 204)
 
     def update_page(self, page_id: str, updates: dict) -> dict | None:
         url = f"{self.sb_url}/rest/v1/pages?id=eq.{page_id}"

@@ -139,3 +139,14 @@ def test_get_store_factory(monkeypatch):
     st = get_store()
     assert isinstance(st, SqliteStore)
 
+
+
+def test_sqlite_store_delete_page(tmp_path):
+    db_file = str(tmp_path / "tm_delete.db")
+    store = SqliteStore(db_path=db_file)
+    p = store.add_page({"url": "https://delete-me.com", "title": "Delete Me"})
+    page_id = p["id"]
+    assert store.get_page(page_id) is not None
+    assert store.delete_page(page_id) is True
+    assert store.get_page(page_id) is None
+    assert store.delete_page(page_id) is False

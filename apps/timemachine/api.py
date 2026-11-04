@@ -33,6 +33,13 @@ logger = logging.getLogger("timemachine.api")
 
 @asynccontextmanager
 async def tm_lifespan(app: FastAPI):
+    # Production startup assertion: refuse to run with SQLite on ephemeral production hosts
+    env = os.getenv("ENV", "").strip().lower()
+    is_render = os.getenv("RENDER", "").strip().lower() in ("true", "1")
+    backend = os.getenv("STORE_BACKEND", "sqlite").strip().lower()
+    if (env == "production" or is_render) and backend != "supabase":
+        raise RuntimeError(f"Production environment requires STORE_BACKEND=supabase (current: {backend})")
+
     # Startup: Launch background processor worker and hourly watchdog
     processor_worker.start()
     watchdog_worker.start()
