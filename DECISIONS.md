@@ -74,3 +74,7 @@
 ### Decision 16: Live Mutable Test Page Architecture
 - **Finding**: Proving live change detection requires a mutable remote HTTP endpoint that TinyFish monitors can access from the public internet.
 - **Decision**: Utilized `webhook.site` with remote `PUT /token/{id}` content management. Created test page with initial pricing ($29/mo), captured baseline v1 + screenshot, mutated to $49/mo + upgraded features, triggered `POST /v1/monitors/{id}/runs`, and verified complete pipeline: processor detected change -> captured v2 screenshot via CDP -> computed structured diff -> Groq classified price increase -> stored Version 2 -> exported 8 judge samples.
+
+### Decision 17: Stray Monitor Cleanup (Step 1)
+- **Finding**: Running `scripts/audit_monitors.py` revealed 34 live monitors on TinyFish vs 25 tracked in DB (9 strays consisting of earlier testpage creations and aborted US visa monitor retries). Each stray monitor was incurring $0.005 per run.
+- **Decision**: Deleted all 9 stray monitors from TinyFish. Live monitor count reduced from 34 to exactly 25, matching the tracked pages in database 1:1.
