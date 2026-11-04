@@ -375,6 +375,25 @@ def get_page_asof(
     return ver
 
 
+@app.get("/as-of")
+def get_asof_by_url(
+    url: str = Query(..., description="Target page URL"),
+    at: str | None = Query(None, description="Target point-in-time (YYYY-MM-DD or ISO-8601)"),
+    date: str | None = Query(None, description="Alternative parameter for at")
+):
+    """Convenience endpoint querying point-in-time version by exact URL."""
+    target_date = at or date
+    if not target_date:
+        return json_error("MISSING_PARAMETER", "Query parameter 'at' or 'date' is required", status_code=400)
+
+    store = get_store()
+    page = store.get_page_by_url(url)
+    if not page:
+        return json_error("PAGE_NOT_FOUND", f"Page with URL '{url}' not found", status_code=404)
+
+    return get_page_asof(page["id"], target_date)
+
+
 @app.get("/pages/{page_id}/diff")
 def get_page_diff(
     page_id: str,

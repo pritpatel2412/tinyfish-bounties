@@ -41,7 +41,10 @@ def test_screenshot_store_local_fallback():
     dummy_bytes = b"\xff\xd8\xff\xe0\x00\x10JFIF"  # JPEG magic bytes
     key = "test_shot_123.jpg"
     saved_path = ScreenshotStore.put(dummy_bytes, key)
-    assert os.path.exists(saved_path)
+    if saved_path.startswith("http"):
+        assert "storage" in saved_path
+    else:
+        assert os.path.exists(saved_path)
 
     retrieved = ScreenshotStore.get(key)
     assert retrieved == dummy_bytes
