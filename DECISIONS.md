@@ -98,3 +98,7 @@
 ### Decision 22: Scheduled-Flow Verification & Cadence Proof (Step 6)
 - **Finding**: Verifying continuous monitoring requires mathematical proof that every tracked target has an active check within 1.5× its schedule interval, with outcomes classified and logged.
 - **Decision**: Implemented `scripts/verify_scheduled_flow.py` inspecting all 24 non-test pages in database. Supported `--trigger-due` to execute due monitor runs and drain events through the processing pipeline. Verified 24/24 pages are on cadence (0 flagged) with next checks scheduled in 115–358 minutes. Committed the live verification table to `TINYFISH_NOTES.md`.
+
+### Decision 23: Fleet Expansion to 28 Pages & 14-Day Budget Audit (Step 7)
+- **Finding**: With 24 pages active under the 30-monitor cap, 6 monitor slots remained available. Evaluating 5 high-churn candidate pages (`Python Docs`, `Cloudflare Changelog`, `Node.js Releases`, `Supabase Changelog`, `ChatGPT Release Notes`) via `scripts/vet_proposed_pages.py` resulted in 100% stability pass rate.
+- **Decision**: Added 4 high-value developer changelog surfaces (`Python Docs`, `Cloudflare Changelog`, `Node.js Releases`, `Supabase Changelog`) staggered at 2-hour intervals, reaching 28 active monitors (28/30 Time Machine quota, 22 global spare slots remaining). Live wallet balance is $35.82 USD; projected 14-day burn is $14.70 USD (208 runs/day @ $0.005/run = $1.04/day + $0.01/day change screenshots), leaving >$21.12 USD headroom.

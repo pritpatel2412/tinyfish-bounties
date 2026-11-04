@@ -12,7 +12,7 @@
     "history_starts_at": "2026-11-03T16:34:19.992194+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:34:19.992194+00:00",
+    "last_checked_at": "2026-11-04T11:01:53.306833+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -29,7 +29,7 @@
     "history_starts_at": "2026-11-03T16:35:34.032294+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:35:34.032294+00:00",
+    "last_checked_at": "2026-11-04T11:03:04.583969+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -46,9 +46,9 @@
     "history_starts_at": "2026-11-03T16:36:46.322453+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:36:46.322453+00:00",
+    "last_checked_at": "2026-11-04T11:03:17.834557+00:00",
     "is_test": false,
-    "version_count": 1
+    "version_count": 2
   },
   {
     "id": "cb9b460a-b588-4b43-9fa3-80752f9803a5",
@@ -63,7 +63,7 @@
     "history_starts_at": "2026-11-03T16:37:10.821893+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:37:10.821893+00:00",
+    "last_checked_at": "2026-11-04T11:03:20.771715+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -80,7 +80,7 @@
     "history_starts_at": "2026-11-03T16:37:41.720921+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:37:41.720921+00:00",
+    "last_checked_at": "2026-11-04T11:03:26.017945+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -97,9 +97,9 @@
     "history_starts_at": "2026-11-03T16:38:04.911932+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:38:04.911932+00:00",
+    "last_checked_at": "2026-11-04T11:03:30.253350+00:00",
     "is_test": false,
-    "version_count": 1
+    "version_count": 2
   },
   {
     "id": "c58e4947-1d82-4cc9-b2f0-c76541c7b36f",
@@ -114,7 +114,7 @@
     "history_starts_at": "2026-11-03T16:38:34.561242+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:38:34.561242+00:00",
+    "last_checked_at": "2026-11-04T11:03:34.053928+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -131,7 +131,7 @@
     "history_starts_at": "2026-11-03T16:39:14.924956+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:39:14.924956+00:00",
+    "last_checked_at": "2026-11-04T11:03:39.104005+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -148,7 +148,7 @@
     "history_starts_at": "2026-11-03T16:39:45.490081+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:39:45.490081+00:00",
+    "last_checked_at": "2026-11-04T11:03:43.001200+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -165,7 +165,7 @@
     "history_starts_at": "2026-11-03T16:40:16.068842+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:40:16.068842+00:00",
+    "last_checked_at": "2026-11-04T11:03:46.536226+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -182,9 +182,9 @@
     "history_starts_at": "2026-11-03T16:41:04.142218+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:41:04.142218+00:00",
+    "last_checked_at": "2026-11-04T11:03:51.428530+00:00",
     "is_test": false,
-    "version_count": 1
+    "version_count": 2
   },
   {
     "id": "cbcda0f9-dfdc-4cbc-90f9-b5d1bdbf6134",
@@ -199,7 +199,7 @@
     "history_starts_at": "2026-11-03T16:41:56.068402+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:41:56.068402+00:00",
+    "last_checked_at": "2026-11-04T11:03:57.337985+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -216,7 +216,7 @@
     "history_starts_at": "2026-11-03T16:43:00.291366+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:43:00.291366+00:00",
+    "last_checked_at": "2026-11-04T11:04:03.903847+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -233,7 +233,7 @@
     "history_starts_at": "2026-11-03T16:43:37.346515+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:43:37.346515+00:00",
+    "last_checked_at": "2026-11-04T11:04:12.666991+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -250,7 +250,7 @@
     "history_starts_at": "2026-11-03T16:44:05.015487+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:44:05.015487+00:00",
+    "last_checked_at": "2026-11-04T11:04:16.419277+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -267,7 +267,7 @@
     "history_starts_at": "2026-11-03T16:44:38.487946+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:44:38.487946+00:00",
+    "last_checked_at": "2026-11-04T11:04:21.887906+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -284,7 +284,7 @@
     "history_starts_at": "2026-11-03T16:45:29.201742+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:45:29.201742+00:00",
+    "last_checked_at": "2026-11-04T11:04:26.170147+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -301,7 +301,7 @@
     "history_starts_at": "2026-11-03T16:46:22.218051+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:46:22.218051+00:00",
+    "last_checked_at": "2026-11-04T11:04:30.453355+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -318,9 +318,9 @@
     "history_starts_at": "2026-11-03T16:47:26.850847+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-03T16:47:26.850847+00:00",
+    "last_checked_at": "2026-11-04T11:04:35.115957+00:00",
     "is_test": false,
-    "version_count": 1
+    "version_count": 2
   },
   {
     "id": "15315b46-e5c4-4b21-b82f-4993aeaedaaf",
@@ -335,7 +335,7 @@
     "history_starts_at": "2026-11-04T03:19:11.940931+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-04T03:19:11.940931+00:00",
+    "last_checked_at": "2026-11-04T11:04:42.320737+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -352,7 +352,7 @@
     "history_starts_at": "2026-11-04T03:19:39.822085+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-04T03:19:39.822085+00:00",
+    "last_checked_at": "2026-11-04T11:04:45.666340+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -369,7 +369,7 @@
     "history_starts_at": "2026-11-04T03:20:31.770001+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-04T03:20:31.770001+00:00",
+    "last_checked_at": "2026-11-04T11:04:51.104033+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -386,7 +386,7 @@
     "history_starts_at": "2026-11-04T03:22:30.849784+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-04T03:22:30.849784+00:00",
+    "last_checked_at": "2026-11-04T11:04:55.361612+00:00",
     "is_test": false,
     "version_count": 1
   },
@@ -403,7 +403,75 @@
     "history_starts_at": "2026-11-04T03:23:27.815078+00:00",
     "active": true,
     "status": "active",
-    "last_checked_at": "2026-11-04T03:23:27.815078+00:00",
+    "last_checked_at": "2026-11-04T11:05:00.906410+00:00",
+    "is_test": false,
+    "version_count": 1
+  },
+  {
+    "id": "b02da499-c3fe-40d8-b961-5a7ae138ee73",
+    "url": "https://docs.python.org/3/whatsnew/",
+    "title": "What's New in Python - Python Docs",
+    "category": "changelog",
+    "monitor_id": "1bca01cd-b0bf-4f27-88b6-67d5e2ed79ff",
+    "schedule_cron": "12 */2 * * *",
+    "interval_label": "2h",
+    "ignore_selectors": [],
+    "added_at": "2026-11-04T11:10:29.709261+00:00",
+    "history_starts_at": "2026-11-04T11:10:29.709261+00:00",
+    "active": true,
+    "status": "active",
+    "last_checked_at": "2026-11-04T11:10:29.709261+00:00",
+    "is_test": false,
+    "version_count": 1
+  },
+  {
+    "id": "2aff6f7c-ef30-4347-a0a9-2cb66f6e91f1",
+    "url": "https://developers.cloudflare.com/workers/platform/changelog/",
+    "title": "Cloudflare Workers Changelog",
+    "category": "changelog",
+    "monitor_id": "d800b34f-d379-488a-8d20-98b430c97f61",
+    "schedule_cron": "15 */2 * * *",
+    "interval_label": "2h",
+    "ignore_selectors": [],
+    "added_at": "2026-11-04T11:10:49.838136+00:00",
+    "history_starts_at": "2026-11-04T11:10:49.838136+00:00",
+    "active": true,
+    "status": "active",
+    "last_checked_at": "2026-11-04T11:10:49.838136+00:00",
+    "is_test": false,
+    "version_count": 1
+  },
+  {
+    "id": "884bd22c-e15f-4092-82ed-8f27515d603a",
+    "url": "https://nodejs.org/en/about/previous-releases",
+    "title": "Node.js Releases",
+    "category": "changelog",
+    "monitor_id": "d3d22878-99f7-48c7-9c81-dbe9b0c5faa2",
+    "schedule_cron": "18 */2 * * *",
+    "interval_label": "2h",
+    "ignore_selectors": [],
+    "added_at": "2026-11-04T11:11:09.196744+00:00",
+    "history_starts_at": "2026-11-04T11:11:09.196744+00:00",
+    "active": true,
+    "status": "active",
+    "last_checked_at": "2026-11-04T11:11:09.196744+00:00",
+    "is_test": false,
+    "version_count": 1
+  },
+  {
+    "id": "d30b6ce1-5fc6-417a-a9a2-f97c6b9fef2d",
+    "url": "https://supabase.com/changelog",
+    "title": "Supabase Changelog",
+    "category": "changelog",
+    "monitor_id": "c4dce3d4-7365-4292-8944-826f2719daf0",
+    "schedule_cron": "22 */2 * * *",
+    "interval_label": "2h",
+    "ignore_selectors": [],
+    "added_at": "2026-11-04T11:11:28.558876+00:00",
+    "history_starts_at": "2026-11-04T11:11:28.558876+00:00",
+    "active": true,
+    "status": "active",
+    "last_checked_at": "2026-11-04T11:11:28.558876+00:00",
     "is_test": false,
     "version_count": 1
   }

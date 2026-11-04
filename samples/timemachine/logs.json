@@ -1,6 +1,418 @@
 {
-  "count": 24,
+  "count": 52,
   "logs": [
+    {
+      "id": "7f19c1b9-3c4c-4ad7-80bf-51a4b6cdf4fd",
+      "page_id": "d30b6ce1-5fc6-417a-a9a2-f97c6b9fef2d",
+      "url": "https://supabase.com/changelog",
+      "title": "Supabase Changelog",
+      "category": "changelog",
+      "run_id": "e55669e7-dfea-4061-bba3-d3e1e7cc5689",
+      "outcome": "baseline",
+      "observed_at": "2026-11-04T11:11:28.558876+00:00",
+      "detail": {
+        "version_no": 1,
+        "blocks_count": 1227,
+        "content_hash": "cf729fb590a1abe8713ac3aafb1de03f1eb1e1d705fd66dd43056cce9e2a70f1",
+        "screenshot_url": "data\\shots\\tm_a9f1927f551c.jpg"
+      }
+    },
+    {
+      "id": "db750849-cdfe-4b29-801a-8c56ee027b68",
+      "page_id": "884bd22c-e15f-4092-82ed-8f27515d603a",
+      "url": "https://nodejs.org/en/about/previous-releases",
+      "title": "Node.js Releases",
+      "category": "changelog",
+      "run_id": "57c43e27-8919-43b4-adaa-2bf685924462",
+      "outcome": "baseline",
+      "observed_at": "2026-11-04T11:11:09.196744+00:00",
+      "detail": {
+        "version_no": 1,
+        "blocks_count": 41,
+        "content_hash": "6bbd3f032cee94bfbb175e49827b056f30359f08abc6478199405592f6f33503",
+        "screenshot_url": "data\\shots\\tm_db586bde39c1.jpg"
+      }
+    },
+    {
+      "id": "1b3dacd6-3b9e-4ed3-9c99-a575936556a3",
+      "page_id": "2aff6f7c-ef30-4347-a0a9-2cb66f6e91f1",
+      "url": "https://developers.cloudflare.com/workers/platform/changelog/",
+      "title": "Cloudflare Workers Changelog",
+      "category": "changelog",
+      "run_id": "c1ee326c-4e6c-4663-88a3-19dc443d4110",
+      "outcome": "baseline",
+      "observed_at": "2026-11-04T11:10:49.838136+00:00",
+      "detail": {
+        "version_no": 1,
+        "blocks_count": 169,
+        "content_hash": "96026bb35208cd744de84e927a5483e38b59b68ce96f8c618fa9dbfebc7756eb",
+        "screenshot_url": "data\\shots\\tm_f65dcab3ccaf.jpg"
+      }
+    },
+    {
+      "id": "9c89a8ea-0d5c-4f3a-a184-aba615c24cee",
+      "page_id": "b02da499-c3fe-40d8-b961-5a7ae138ee73",
+      "url": "https://docs.python.org/3/whatsnew/",
+      "title": "What's New in Python - Python Docs",
+      "category": "changelog",
+      "run_id": "3cb7437b-d593-4781-b80c-f16c4def1041",
+      "outcome": "baseline",
+      "observed_at": "2026-11-04T11:10:29.709261+00:00",
+      "detail": {
+        "version_no": 1,
+        "blocks_count": 454,
+        "content_hash": "0a1aa948a8e8ede2ad0dd5103a95122796f502ddd0bdea873ec6daaa6e5690c0",
+        "screenshot_url": "data\\shots\\tm_38b955de5010.jpg"
+      }
+    },
+    {
+      "id": "231c141c-3e08-46eb-812a-28342e6325d0",
+      "page_id": "50f55448-125b-4e41-ade3-33432579a2a9",
+      "url": "https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-copilot",
+      "title": "GitHub Copilot licenses - GitHub Docs",
+      "category": "ai-developer-tools",
+      "run_id": "567b3b9c-ea24-4c4a-9d27-6611d5428bf4",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:05:00.906410+00:00",
+      "detail": {
+        "content_hash": "bdbab55f1fa61c0484f9c4227ccebb798b83ff80f28ba159f8a19ba16e2bab29"
+      }
+    },
+    {
+      "id": "c88212a5-1700-4bd0-88f7-9027a76d5d02",
+      "page_id": "4726bdb8-cc49-4223-9636-8b6402a39474",
+      "url": "https://status.groq.com/",
+      "title": "Groq Status: Real-Time Visibility Into GroqCloud's System Health and  Status",
+      "category": "changelog",
+      "run_id": "786a0a04-2b8a-4fcf-9cce-18d8732712d3",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:04:55.361612+00:00",
+      "detail": {
+        "content_hash": "96ea3487e511fbef8f822d7aea5f7d107bd4c49c2266379a4e69b8244e0091d3"
+      }
+    },
+    {
+      "id": "aeb183f3-512d-4a0a-8107-4bb383428343",
+      "page_id": "c2f81046-e225-4a4d-aadc-d9e78bcd18a1",
+      "url": "https://status.openai.com/",
+      "title": "OpenAI Status",
+      "category": "changelog",
+      "run_id": "23bfe61b-bebb-4d0c-b666-0aef31236539",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:04:51.104033+00:00",
+      "detail": {
+        "content_hash": "6949707f88efec52ea456a31f2b76686ed55d7b7c4a82034996e4fe6a690bdde"
+      }
+    },
+    {
+      "id": "9ae30eaa-ccba-42b6-b119-8b31e965dee8",
+      "page_id": "152907cf-80ce-4fd3-93ea-ee8638e14644",
+      "url": "https://www.uscis.gov/newsroom/alerts",
+      "title": "Alerts",
+      "category": "visa-immigration",
+      "run_id": "9c62d7b9-e0fe-49c9-b66d-5402ca6bdffc",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:04:45.666340+00:00",
+      "detail": {
+        "content_hash": "656e229d70f17fb5fe1dde9fcb021246b3095d243d31f5c81fd7181dc29f111e"
+      }
+    },
+    {
+      "id": "1b545bd3-830e-46b1-8fd6-798d04b50a2f",
+      "page_id": "15315b46-e5c4-4b21-b82f-4993aeaedaaf",
+      "url": "https://docs.anthropic.com/en/release-notes/overview",
+      "title": "Claude Platform release notes",
+      "category": "changelog",
+      "run_id": "d98e5490-5db4-4a41-b1a7-72e8f5b68bc2",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:04:42.320737+00:00",
+      "detail": {
+        "content_hash": "756842a42508c299b6d4aaf17c5045fd0f8c1fac2789ab1a10328daf646a21aa"
+      }
+    },
+    {
+      "id": "a0b47a80-341f-45d0-b8dd-7902eb8aaa9d",
+      "page_id": "e79f308f-2b75-47e0-9c81-fe4d91ac3724",
+      "url": "https://vercel.com/changelog",
+      "title": "Changelog - Vercel",
+      "category": "changelog",
+      "run_id": "3f3441a9-5903-4a31-befc-1a9cbd3a978e",
+      "outcome": "changed",
+      "observed_at": "2026-11-04T11:04:35.115957+00:00",
+      "detail": {
+        "version_no": 2,
+        "added_count": 3,
+        "removed_count": 3,
+        "changed_count": 1,
+        "classification": {
+          "type": "price",
+          "materiality": 0.1,
+          "summary": "Web page content changed."
+        },
+        "screenshot_url": "data\\shots\\tm_5d37aa540281.jpg"
+      }
+    },
+    {
+      "id": "a85b7d1c-2919-482e-805a-3a2355dfd503",
+      "page_id": "028ed1d3-2399-4b92-bc50-474768cd5bfa",
+      "url": "https://www.gov.uk/skilled-worker-visa",
+      "title": "Skilled Worker visa",
+      "category": "visa-immigration",
+      "run_id": "39812450-c191-4da1-a874-cf628b979279",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:04:30.453355+00:00",
+      "detail": {
+        "content_hash": "24f64f2017bee5507c16451a25b526aed5076bef90cb5fbd8b651235c9c44c35"
+      }
+    },
+    {
+      "id": "23e55151-6895-4a9f-928b-eb3effa03751",
+      "page_id": "84dfbd20-83f4-4ff3-ac8d-b00438a91ca5",
+      "url": "https://www.gov.uk/student-visa",
+      "title": "Student visa ",
+      "category": "visa-immigration",
+      "run_id": "53f63d43-297f-4736-a989-187dc33cce67",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:04:26.170147+00:00",
+      "detail": {
+        "content_hash": "581b8dfe2a9ccd7faba9d21269d9a7aeaea9e8db95b478390ee1a09bbed822d8"
+      }
+    },
+    {
+      "id": "9649b5d3-6087-4ba8-b7e8-3e72b6379cbc",
+      "page_id": "7e89878e-24bc-4063-b5b8-7e4aa0d75527",
+      "url": "https://vercel.com/legal/terms",
+      "title": "Terms of Service",
+      "category": "legal-policy",
+      "run_id": "01cfc25c-950d-47f7-aead-f496754d8d8c",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:04:21.887906+00:00",
+      "detail": {
+        "content_hash": "5366ae1c12f887e504150b7fcc81908197eacbf56397ea12c84396df0f05bb20"
+      }
+    },
+    {
+      "id": "c8c253b3-5dc6-41c1-ac3d-7434712dc6bc",
+      "page_id": "86ff3835-8704-44f1-9496-2b6acdd4bdfe",
+      "url": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
+      "title": "GitHub Terms of Service - GitHub Docs",
+      "category": "legal-policy",
+      "run_id": "0cd156d6-0de1-46d0-a924-04a7de9e3089",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:04:16.419277+00:00",
+      "detail": {
+        "content_hash": "421b608de2e8d03b9bfc5d904fd203e9d4e4ee7a2d5656ea8c177657e4fab44b"
+      }
+    },
+    {
+      "id": "b751827b-74c1-4d9a-bf39-2865625e6171",
+      "page_id": "fedebe27-c0c6-4642-ba8e-90d85288aba0",
+      "url": "https://policies.google.com/privacy",
+      "title": "Privacy Policy \u2013 Privacy & Terms \u2013 Google",
+      "category": "legal-policy",
+      "run_id": "002396af-4422-4294-96e0-c4acef8fe7ac",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:04:12.666991+00:00",
+      "detail": {
+        "content_hash": "2b7cb36a586f1c05a3a7b58d04963636fdfe6844fd61c3e91a676c17bdf4aad5"
+      }
+    },
+    {
+      "id": "ee1c180d-32c0-4ebd-9eb8-aa010636bdd2",
+      "page_id": "13928bdd-5f65-4a59-a499-6af1c0d46859",
+      "url": "https://openai.com/policies/terms-of-use",
+      "title": "Terms of Use",
+      "category": "legal-policy",
+      "run_id": "ca2695b0-f9d1-4d7a-bdef-a9dd8fd936e1",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:04:03.903847+00:00",
+      "detail": {
+        "content_hash": "02d395021c1eab4271a5e88effb02d9c67196df9af4d97c0fb3bdfc9017d239c"
+      }
+    },
+    {
+      "id": "6b714743-f896-43ce-9a75-62d00c8d6f9c",
+      "page_id": "cbcda0f9-dfdc-4cbc-90f9-b5d1bdbf6134",
+      "url": "https://resend.com/pricing",
+      "title": "Pricing \u00b7 Resend",
+      "category": "ai-developer-tools",
+      "run_id": "723b7ef0-c647-4978-9e1d-6dd78d37d936",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:03:57.337985+00:00",
+      "detail": {
+        "content_hash": "192fd426aa055e4c21c1dab80bc224cb1e3224afd8daa05a274584db6ca96880"
+      }
+    },
+    {
+      "id": "c6e08948-cdf3-4724-8541-cbd716ed48ba",
+      "page_id": "3e802da7-d288-451a-a6cf-7cea2e44743f",
+      "url": "https://stripe.com/pricing",
+      "title": "Pricing & Fees",
+      "category": "fintech-billing",
+      "run_id": "7193625b-b569-4e23-97b0-92feab72bf7a",
+      "outcome": "changed",
+      "observed_at": "2026-11-04T11:03:51.428530+00:00",
+      "detail": {
+        "version_no": 2,
+        "added_count": 51,
+        "removed_count": 0,
+        "changed_count": 0,
+        "classification": {
+          "type": "price",
+          "materiality": 0.9,
+          "summary": "The page has been updated to include detailed pricing information for various Stripe services, including specific fees for 3D Secure, Instant Payouts, currency conversion, and other payment features."
+        },
+        "screenshot_url": "data\\shots\\tm_5cae64cec97b.jpg"
+      }
+    },
+    {
+      "id": "0f126f8b-084d-4549-8bba-3a0325a9f8a4",
+      "page_id": "71b505b8-76d8-4796-99db-45731dfbbbee",
+      "url": "https://www.netlify.com/pricing",
+      "title": "Pricing and Plans | Netlify",
+      "category": "ai-developer-tools",
+      "run_id": "dca73ca2-66fe-4b19-bf9b-3c90f44baf72",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:03:46.536226+00:00",
+      "detail": {
+        "content_hash": "4d0fab526e609260c8743ea5e1a61cac285b60004e2971999bfed8b1de8c8192"
+      }
+    },
+    {
+      "id": "e11a4d2b-6be2-40b9-beb5-1349c0e3b127",
+      "page_id": "87d93eb2-c228-442f-9df1-097997262938",
+      "url": "https://huggingface.co/pricing",
+      "title": "Pricing - Hugging Face",
+      "category": "ai-developer-tools",
+      "run_id": "103d7e1a-38c9-4877-8225-5526c94c76ff",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:03:43.001200+00:00",
+      "detail": {
+        "content_hash": "7708bef908865d64de845e39cceacad96470caef2b9698bed4d0b66d78f661d6"
+      }
+    },
+    {
+      "id": "587c5e59-bf1d-4c62-b4a9-f1755e8aa3c1",
+      "page_id": "e89b43f2-90a2-4866-af3a-c4ad396af519",
+      "url": "https://github.com/features/copilot/plans",
+      "title": "GitHub Copilot \u00b7 Plans & pricing for every developer & team \u00b7 GitHub",
+      "category": "ai-developer-tools",
+      "run_id": "0069e797-d977-4658-aa09-ade2c0c1c01b",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:03:39.104005+00:00",
+      "detail": {
+        "content_hash": "02171b29d365be26effa90e2788a7c275a65e90b3b4defad35e16d3b2be2436f"
+      }
+    },
+    {
+      "id": "dfa99e1f-70ff-44ce-b3ba-f05d4fa3aecf",
+      "page_id": "c58e4947-1d82-4cc9-b2f0-c76541c7b36f",
+      "url": "https://www.cursor.com/pricing",
+      "title": "Cursor \u00b7 Pricing",
+      "category": "ai-developer-tools",
+      "run_id": "355d840a-290a-455c-b508-0e966f397eeb",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:03:34.053928+00:00",
+      "detail": {
+        "content_hash": "4fda57c5e7c156fd3d14b6fd476971c94f6d84eafcbd0241c16f4b684e06d87c"
+      }
+    },
+    {
+      "id": "add1c97e-6fc4-4171-a69e-f5f818a91423",
+      "page_id": "62fd75cf-6673-4411-b906-b6a2f1eac7c4",
+      "url": "https://render.com/pricing",
+      "title": "Pricing",
+      "category": "ai-developer-tools",
+      "run_id": "04c95389-45e8-4bc8-8777-5a4446e71164",
+      "outcome": "changed",
+      "observed_at": "2026-11-04T11:03:30.253350+00:00",
+      "detail": {
+        "version_no": 2,
+        "added_count": 3,
+        "removed_count": 0,
+        "changed_count": 0,
+        "classification": {
+          "type": "feature",
+          "materiality": 0.3,
+          "summary": "Added promotional banners for startup credits and migration assistance along with a navigation link to pricing and FAQs."
+        },
+        "screenshot_url": "data\\shots\\tm_5bca0eeb21f4.jpg"
+      }
+    },
+    {
+      "id": "257fc8a7-041a-427b-90b4-650ac6e6b1f8",
+      "page_id": "adc4d1ce-2bea-488d-ab34-368cfb618b88",
+      "url": "https://supabase.com/pricing",
+      "title": "Pricing & Fees | Supabase",
+      "category": "ai-developer-tools",
+      "run_id": "74492f63-6ff3-4414-9c9a-ca2a7422b3be",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:03:26.017945+00:00",
+      "detail": {
+        "content_hash": "1abf16bd12bccaa7767f15f9ecaee3eb2887f4d447632bb42f2e11a30c3588ff"
+      }
+    },
+    {
+      "id": "fed79fff-1d47-4c58-bf5c-3a0968858477",
+      "page_id": "cb9b460a-b588-4b43-9fa3-80752f9803a5",
+      "url": "https://replit.com/pricing",
+      "title": "Pricing and Plans",
+      "category": "ai-developer-tools",
+      "run_id": "057059a8-b88f-4af1-a6df-4e7531182a35",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:03:20.771715+00:00",
+      "detail": {
+        "content_hash": "451521db18c12bf03f39be77e3eb97a719c94e66412a713e0e10a908ee40091b"
+      }
+    },
+    {
+      "id": "99f73bf5-081f-4e3b-9d66-9ca2d7797f13",
+      "page_id": "60a73440-5ad2-4135-babb-4d91e724ae06",
+      "url": "https://openai.com/api/pricing",
+      "title": "Business Pricing",
+      "category": "ai-developer-tools",
+      "run_id": "6a2d1b71-abaa-4302-ad41-061f52cc6d73",
+      "outcome": "changed",
+      "observed_at": "2026-11-04T11:03:17.834557+00:00",
+      "detail": {
+        "version_no": 2,
+        "added_count": 2,
+        "removed_count": 2,
+        "changed_count": 0,
+        "classification": {
+          "type": "feature",
+          "materiality": 0.3,
+          "summary": "The Business pricing section replaced a link to consumer plans with a new option to chat with a buying agent for enterprise inquiries."
+        },
+        "screenshot_url": "data\\shots\\tm_4ca89b601b1d.jpg"
+      }
+    },
+    {
+      "id": "3c64af62-86a0-43a8-912a-faf997cac57d",
+      "page_id": "ec4d9ed7-e3f8-42d0-b3fd-0de8b379c24b",
+      "url": "https://ai.google.dev/gemini-api/docs/rate-limits",
+      "title": "Rate limits \u00a0|\u00a0 Gemini API \u00a0|\u00a0 Google AI for Developers",
+      "category": "ai-developer-tools",
+      "run_id": "39e2ccb2-81bd-4a9e-8538-1b5e19818b26",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:03:04.583969+00:00",
+      "detail": {
+        "content_hash": "332a1ef37c8ebdd6b44343a827d3d71f90c034a9692bbafa2dbafbe15a54d6c1"
+      }
+    },
+    {
+      "id": "c30b65c7-717e-4bae-8fa9-a9aa0567a46b",
+      "page_id": "368903c5-daeb-4fd7-a893-1db2118237a6",
+      "url": "https://console.groq.com/docs/rate-limits",
+      "title": "Rate Limits - GroqDocs",
+      "category": "ai-developer-tools",
+      "run_id": "2aa3236e-2305-4857-ac69-58aeb7fdf25d",
+      "outcome": "unchanged",
+      "observed_at": "2026-11-04T11:01:53.306833+00:00",
+      "detail": {
+        "content_hash": "418cb191bc9dc71af820d7c3e42450fd6669e576d0c5f10ca58285feb3c7ac76"
+      }
+    },
     {
       "id": "084ecbed-eedb-4992-afe5-038066e870ed",
       "page_id": "50f55448-125b-4e41-ade3-33432579a2a9",

@@ -1,4 +1,65 @@
 {
-  "total_changes": 0,
-  "changes": []
+  "total_changes": 4,
+  "changes": [
+    {
+      "page_id": "e79f308f-2b75-47e0-9c81-fe4d91ac3724",
+      "url": "https://vercel.com/changelog",
+      "title": "Changelog - Vercel",
+      "category": "changelog",
+      "version_no": 2,
+      "observed_at": "2026-11-04T11:04:35.115957+00:00",
+      "summary": "Web page content changed.",
+      "classification": {
+        "type": "price",
+        "materiality": 0.1,
+        "summary": "Web page content changed."
+      },
+      "screenshot_url": "data\\shots\\tm_5d37aa540281.jpg"
+    },
+    {
+      "page_id": "3e802da7-d288-451a-a6cf-7cea2e44743f",
+      "url": "https://stripe.com/pricing",
+      "title": "Pricing & Fees",
+      "category": "fintech-billing",
+      "version_no": 2,
+      "observed_at": "2026-11-04T11:03:51.428530+00:00",
+      "summary": "The page has been updated to include detailed pricing information for various Stripe services, including specific fees for 3D Secure, Instant Payouts, currency conversion, and other payment features.",
+      "classification": {
+        "type": "price",
+        "materiality": 0.9,
+        "summary": "The page has been updated to include detailed pricing information for various Stripe services, including specific fees for 3D Secure, Instant Payouts, currency conversion, and other payment features."
+      },
+      "screenshot_url": "data\\shots\\tm_5cae64cec97b.jpg"
+    },
+    {
+      "page_id": "62fd75cf-6673-4411-b906-b6a2f1eac7c4",
+      "url": "https://render.com/pricing",
+      "title": "Pricing",
+      "category": "ai-developer-tools",
+      "version_no": 2,
+      "observed_at": "2026-11-04T11:03:30.253350+00:00",
+      "summary": "Added promotional banners for startup credits and migration assistance along with a navigation link to pricing and FAQs.",
+      "classification": {
+        "type": "feature",
+        "materiality": 0.3,
+        "summary": "Added promotional banners for startup credits and migration assistance along with a navigation link to pricing and FAQs."
+      },
+      "screenshot_url": "data\\shots\\tm_5bca0eeb21f4.jpg"
+    },
+    {
+      "page_id": "60a73440-5ad2-4135-babb-4d91e724ae06",
+      "url": "https://openai.com/api/pricing",
+      "title": "Business Pricing",
+      "category": "ai-developer-tools",
+      "version_no": 2,
+      "observed_at": "2026-11-04T11:03:17.834557+00:00",
+      "summary": "The Business pricing section replaced a link to consumer plans with a new option to chat with a buying agent for enterprise inquiries.",
+      "classification": {
+        "type": "feature",
+        "materiality": 0.3,
+        "summary": "The Business pricing section replaced a link to consumer plans with a new option to chat with a buying agent for enterprise inquiries."
+      },
+      "screenshot_url": "data\\shots\\tm_4ca89b601b1d.jpg"
+    }
+  ]
 }
