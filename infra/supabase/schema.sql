@@ -19,3 +19,11 @@ CREATE INDEX IF NOT EXISTS idx_monitor_events_monitor_id
 
 CREATE INDEX IF NOT EXISTS idx_monitor_events_run_id 
     ON monitor_events (run_id);
+
+ALTER TABLE monitor_events ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    DROP POLICY IF EXISTS "Allow all on monitor_events" ON monitor_events;
+    CREATE POLICY "Allow all on monitor_events" ON monitor_events FOR ALL USING (true) WITH CHECK (true);
+END $$;
