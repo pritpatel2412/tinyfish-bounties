@@ -89,12 +89,12 @@ def create_app(title: str = "TinyFish Service", version: str = "1.0.0", lifespan
     """Creates a configured FastAPI application with standard monitoring routes and error envelopes."""
     app = FastAPI(title=title, version=version, lifespan=lifespan)
 
-    # CORS
+    # CORS: Allow GET for public endpoints from any origin
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
+        allow_credentials=False,
+        allow_methods=["GET", "OPTIONS"],
         allow_headers=["*"],
     )
 

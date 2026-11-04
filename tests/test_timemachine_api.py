@@ -276,3 +276,55 @@ def test_webhook_and_internal_wake(client, test_db_store):
     assert resp_wake.status_code == 200
     assert resp_wake.json()["status"] == "ok"
 
+
+
+def test_admin_token_and_delete_page(client, seeded_page, monkeypatch):
+    page_id = seeded_page["id"]
+    monkeypatch.setenv("ADMIN_TOKEN", "super_secret_token_123")
+
+    # 1. POST /pages without token -> 401
+    resp_unauth = client.post("/pages", json={"url": "https://unauth.com", "title": "Unauth"})
+    assert resp_unauth.status_code == 401
+
+    # 2. DELETE /pages/{id} with wrong token -> 401
+    resp_wrong = client.delete(f"/pages/{page_id}", headers={"X-Admin-Token": "wrong"})
+    assert resp_wrong.status_code == 401
+
+    # 3. DELETE /pages/{id} with correct token -> 200
+    with patch("apps.timemachine.api.TF") as mock_tf_cls:
+        mock_tf = mock_tf_cls.return_value
+        mock_tf.monitors_delete.return_value = {"ok": True}
+        resp_del = client.delete(f"/pages/{page_id}", headers={"X-Admin-Token": "super_secret_token_123"})
+        assert resp_del.status_code == 200
+        assert resp_del.json()["deleted"] is True
+
+
+def test_webhook_and_wake_secrets(client, monkeypatch):
+    monkeypatch.setenv("WEBHOOK_SECRET", "hook_sec_999")
+    monkeypatch.setenv("WAKE_SECRET", "wake_sec_888")
+
+    # Webhook unauthorized
+    resp_wh_bad = client.post("/webhook", json={"id": "bad"})
+    assert resp_wh_bad.status_code == 401
+
+    # Webhook authorized via query param
+    resp_wh_ok = client.post("/webhook?secret=hook_sec_999", json={"id": "ok"})
+    assert resp_wh_ok.status_code == 200
+
+    # Wake unauthorized
+    resp_wake_bad = client.post("/internal/wake")
+    assert resp_wake_bad.status_code == 401
+
+    # Wake authorized via header
+    resp_wake_ok = client.post("/internal/wake", headers={"X-Wake-Secret": "wake_sec_888"})
+    assert resp_wake_ok.status_code == 200
+
+
+def test_suggest_page(client, tmp_path, monkeypatch):
+    resp = client.post("/suggest", json={
+        "url": "https://stripe.com/pricing",
+        "title": "Stripe Pricing",
+        "reason": "Crucial payment fee updates"
+    })
+    assert resp.status_code == 202
+    assert resp.json()["status"] == "queued"
