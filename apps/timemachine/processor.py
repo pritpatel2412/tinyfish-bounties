@@ -133,6 +133,7 @@ def process_single_event(event: dict, store=None, tf: TF | None = None) -> dict:
     )
     monitor_id = (
         event.get("monitor_id")
+        or payload.get("fetch_monitor_id")
         or payload.get("monitor_id")
         or payload.get("data", {}).get("monitor_id")
     )

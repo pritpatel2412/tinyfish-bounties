@@ -34,8 +34,8 @@ serve(async (req: Request) => {
 
   try {
     const payload = await req.json();
-    const runId = payload.run_id ?? payload.data?.run_id ?? null;
-    const monitorId = url.searchParams.get("monitor_id") ?? payload.data?.monitor_id ?? payload.monitor_id ?? null;
+    const runId = payload.id ?? payload.run_id ?? payload.data?.run_id ?? null;
+    const monitorId = url.searchParams.get("monitor_id") ?? payload.fetch_monitor_id ?? payload.monitor_id ?? payload.data?.monitor_id ?? null;
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
