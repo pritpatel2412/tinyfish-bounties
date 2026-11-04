@@ -1,44 +1,6 @@
 {
-  "count": 26,
+  "count": 24,
   "logs": [
-    {
-      "id": "0e222379-5139-4369-b170-ffb6dae4ff22",
-      "page_id": "bd40b560-4f3d-44d2-8222-a4a0ce93c911",
-      "url": "https://webhook.site/4920368c-1f5c-4800-9dd0-ddcea79b4cbf",
-      "title": "Acme Cloud Platform Pricing",
-      "category": "saas_pricing",
-      "run_id": "371fcdb9-4466-4959-9253-c01c7fe489c1",
-      "outcome": "changed",
-      "observed_at": "2026-11-04T03:44:12.223117+00:00",
-      "detail": {
-        "version_no": 2,
-        "added_count": 0,
-        "removed_count": 0,
-        "changed_count": 1,
-        "classification": {
-          "type": "price",
-          "materiality": 0.9,
-          "summary": "The Standard Plan price increased from $29 to $49 per month, accompanied by significant upgrades to team size, storage, and support levels."
-        },
-        "screenshot_url": "data\\shots\\tm_33b8414b5f4d.jpg"
-      }
-    },
-    {
-      "id": "d384162b-6e5a-4f46-9c93-160424a5630d",
-      "page_id": "bd40b560-4f3d-44d2-8222-a4a0ce93c911",
-      "url": "https://webhook.site/4920368c-1f5c-4800-9dd0-ddcea79b4cbf",
-      "title": "Acme Cloud Platform Pricing",
-      "category": "saas_pricing",
-      "run_id": "08f66f55-1772-4899-8f5d-880d5d718180",
-      "outcome": "baseline",
-      "observed_at": "2026-11-04T03:43:53.509259+00:00",
-      "detail": {
-        "version_no": 1,
-        "blocks_count": 1,
-        "content_hash": "c7196c8931e38891e86e00fbbc12b211c04d95da803058f21d803d69278b83f7",
-        "screenshot_url": "data\\shots\\tm_c474e34120c1.jpg"
-      }
-    },
     {
       "id": "084ecbed-eedb-4992-afe5-038066e870ed",
       "page_id": "50f55448-125b-4e41-ade3-33432579a2a9",

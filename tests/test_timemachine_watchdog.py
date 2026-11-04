@@ -68,3 +68,4 @@ def test_watchdog_worker_run_now(test_store):
     res = worker.run_now()
     assert worker.last_check_at is not None
     assert worker.last_result == res
+

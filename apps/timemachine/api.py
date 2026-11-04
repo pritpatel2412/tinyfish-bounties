@@ -108,7 +108,8 @@ def create_page_endpoint(req: PageCreateRequest):
 @app.get("/pages")
 def list_pages_endpoint(
     category: str | None = Query(None, description="Filter by category"),
-    active: bool | None = Query(None, description="Filter by active status")
+    active: bool | None = Query(None, description="Filter by active status"),
+    include_test: bool = Query(False, description="Include test pages if true")
 ):
     """Lists all tracked pages with live monitoring status and version counts."""
     store = get_store()
@@ -116,6 +117,8 @@ def list_pages_endpoint(
 
     result = []
     for p in pages:
+        if not include_test and p.get("is_test"):
+            continue
         if category and p.get("category") != category:
             continue
         if active is not None and p.get("active") != active:
@@ -313,7 +316,8 @@ def get_page_version_endpoint(page_id: str, version_no: int):
 def list_changes_feed(
     since: str | None = Query(None, description="Filter changes observed since ISO timestamp"),
     category: str | None = Query(None, description="Filter by page category"),
-    min_materiality: float | None = Query(None, description="Minimum materiality score (0.0 - 1.0)")
+    min_materiality: float | None = Query(None, description="Minimum materiality score (0.0 - 1.0)"),
+    include_test: bool = Query(False, description="Include test changes if true")
 ):
     """Global feed of real detected changes across all monitored pages."""
     store = get_store()
@@ -328,6 +332,9 @@ def list_changes_feed(
         p_id = chk["page_id"]
         page = all_pages.get(p_id)
         if not page:
+            continue
+
+        if not include_test and page.get("is_test"):
             continue
 
         if category and page.get("category") != category:
@@ -363,7 +370,10 @@ def list_changes_feed(
 
 
 @app.get("/logs")
-def public_logs_feed(limit: int = Query(100, ge=1, le=500, description="Number of log rows to return")):
+def public_logs_feed(
+    limit: int = Query(100, ge=1, le=500, description="Number of log rows to return"),
+    include_test: bool = Query(False, description="Include test logs if true")
+):
     """Public audit feed of monitoring checks proving continuous live operation."""
     store = get_store()
     all_pages = {p["id"]: p for p in store.list_pages()}
@@ -372,6 +382,8 @@ def public_logs_feed(limit: int = Query(100, ge=1, le=500, description="Number o
     logs = []
     for chk in checks:
         page = all_pages.get(chk["page_id"], {})
+        if not include_test and page.get("is_test"):
+            continue
         logs.append({
             "id": chk["id"],
             "page_id": chk["page_id"],
@@ -391,10 +403,14 @@ def public_logs_feed(limit: int = Query(100, ge=1, le=500, description="Number o
 
 
 @app.get("/export.json")
-def export_database_dump():
+def export_database_dump(
+    include_test: bool = Query(False, description="Include test pages if true")
+):
     """One-click complete database export for competition judges."""
     store = get_store()
     pages = store.list_pages()
+    if not include_test:
+        pages = [p for p in pages if not p.get("is_test")]
 
     full_export = {
         "exported_at": datetime.now(timezone.utc).isoformat(),

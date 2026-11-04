@@ -227,3 +227,4 @@ def test_processor_worker_cycle(test_store, seeded_page):
     count = worker.wake()
     assert count == 0
     assert worker.last_run_at is not None
+

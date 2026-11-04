@@ -78,3 +78,7 @@
 ### Decision 17: Stray Monitor Cleanup (Step 1)
 - **Finding**: Running `scripts/audit_monitors.py` revealed 34 live monitors on TinyFish vs 25 tracked in DB (9 strays consisting of earlier testpage creations and aborted US visa monitor retries). Each stray monitor was incurring $0.005 per run.
 - **Decision**: Deleted all 9 stray monitors from TinyFish. Live monitor count reduced from 34 to exactly 25, matching the tracked pages in database 1:1.
+
+### Decision 18: Test Page Isolation & Real-Change Zero Baseline (Step 2)
+- **Finding**: Counting controlled pipeline tests alongside real web changes would overclaim real caught changes to judges.
+- **Decision**: Added `pages.is_test` column (default false). Marked controlled Acme test page `is_test = 1, active = 0, status = 'retired_test'`, and deleted its live monitor from TinyFish. Excluded `is_test` from `/pages`, `/changes`, `/logs`, and `/export.json` unless explicitly requested with `?include_test=1`. Moved pipeline verification samples into `samples/timemachine/verification/` with explanation README. Real change count verified at 0 for judge audit.

@@ -386,3 +386,28 @@ When a scheduled check detects a change (or finishes a run), TinyFish POSTs to `
   - `changes.json` (global change feed with materiality: 0.9)
   - `logs.json` (public audit log of monitoring checks)
   - `export.json` (complete 2MB database dump for judges)
+
+
+---
+
+## 7. Stage 0 Live Verification Findings
+
+- **Agent Cost Accounting**:
+  - Live agent executions return `num_of_steps` in the JSON response payload.
+  - Cost is calculated as `num_of_steps × $0.016 USD` and logged to both `CostLedger` (SQLite) and `data/tf_calls.jsonl`.
+  - Added unit test in `tests/test_agent_cost.py` verifying full aggregation in `/endpoint-usage`.
+
+- **Live `type: fetch` Monitor Run Payload**:
+  - Verified with live runs (`POST /v1/monitors/{id}/runs` and scheduled monitor):
+  - The run payload structure contains:
+    - `id`: unique run ID (UUID).
+    - `is_baseline`: boolean flag (`true` on initial creation, `false` on subsequent runs).
+    - `results`: array of page results where `results[0].text` contains the complete rendered Markdown content.
+    - `results[0].latency_ms`: page fetch latency.
+  - Saved live payload fixture to `tests/fixtures/webhook_fetch_run.json`.
+  - Content is consumed directly from `results[0].text`, completely eliminating extra GET or fetch calls during change processing.
+
+- **Storage Architecture**:
+  - `store.py` provides `SqliteStore` and `SupabaseStore` through `get_store()`.
+  - `ScreenshotStore` targets Supabase Storage bucket `shots` (with local `/data/shots` fallback).
+  - Migration schema defined in `infra/supabase/timemachine.sql`.

@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS pages (
     history_starts_at TIMESTAMPTZ,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     status TEXT NOT NULL DEFAULT 'active',
-    last_checked_at TIMESTAMPTZ
+    last_checked_at TIMESTAMPTZ,
+    is_test BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE INDEX IF NOT EXISTS idx_pages_url ON pages (url);
@@ -65,3 +66,4 @@ CREATE TABLE IF NOT EXISTS checks (
 
 CREATE INDEX IF NOT EXISTS idx_checks_page_observed ON checks (page_id, observed_at);
 CREATE INDEX IF NOT EXISTS idx_checks_run_id ON checks (run_id);
+

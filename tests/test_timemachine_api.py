@@ -275,3 +275,4 @@ def test_webhook_and_internal_wake(client, test_db_store):
     resp_wake = client.post("/internal/wake")
     assert resp_wake.status_code == 200
     assert resp_wake.json()["status"] == "ok"
+

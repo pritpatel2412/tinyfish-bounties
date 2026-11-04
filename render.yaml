@@ -21,3 +21,4 @@ services:
         sync: false
       - key: INTERNAL_SECRET
         sync: false
+

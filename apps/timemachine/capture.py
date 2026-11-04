@@ -180,3 +180,4 @@ def add_page(
     })
 
     return {"page": page_row, "version": version_row, "is_new": True}
+

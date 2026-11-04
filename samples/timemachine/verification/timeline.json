@@ -1,0 +1,36 @@
+{
+  "page_id": "bd40b560-4f3d-44d2-8222-a4a0ce93c911",
+  "url": "https://webhook.site/4920368c-1f5c-4800-9dd0-ddcea79b4cbf",
+  "title": "Acme Cloud Platform Pricing",
+  "total_versions": 2,
+  "timeline": [
+    {
+      "version_no": 2,
+      "observed_at": "2026-11-04T03:44:12.223117+00:00",
+      "processed_at": "2026-11-04T03:44:12.244333+00:00",
+      "content_hash": "cddbc37d5a25da764b5ab04bc2f58dc9d76a02c0570fba4b5db9935795e2bdd8",
+      "screenshot_url": "data\\shots\\tm_33b8414b5f4d.jpg",
+      "source_url": "https://webhook.site/4920368c-1f5c-4800-9dd0-ddcea79b4cbf",
+      "summary": "The Standard Plan price increased from $29 to $49 per month, accompanied by significant upgrades to team size, storage, and support levels.",
+      "classification": {
+        "type": "price",
+        "materiality": 0.9,
+        "summary": "The Standard Plan price increased from $29 to $49 per month, accompanied by significant upgrades to team size, storage, and support levels."
+      }
+    },
+    {
+      "version_no": 1,
+      "observed_at": "2026-11-04T03:43:53.509259+00:00",
+      "processed_at": "2026-11-04T03:44:05.714160+00:00",
+      "content_hash": "c7196c8931e38891e86e00fbbc12b211c04d95da803058f21d803d69278b83f7",
+      "screenshot_url": "data\\shots\\tm_c474e34120c1.jpg",
+      "source_url": "https://webhook.site/4920368c-1f5c-4800-9dd0-ddcea79b4cbf",
+      "summary": "Initial baseline snapshot",
+      "classification": {
+        "type": "baseline",
+        "materiality": 1.0,
+        "summary": "Initial baseline snapshot"
+      }
+    }
+  ]
+}

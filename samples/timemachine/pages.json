@@ -13,6 +13,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:34:19.992194+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -29,6 +30,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:35:34.032294+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -45,6 +47,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:36:46.322453+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -61,6 +64,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:37:10.821893+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -77,6 +81,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:37:41.720921+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -93,6 +98,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:38:04.911932+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -109,6 +115,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:38:34.561242+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -125,6 +132,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:39:14.924956+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -141,6 +149,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:39:45.490081+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -157,6 +166,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:40:16.068842+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -173,6 +183,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:41:04.142218+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -189,6 +200,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:41:56.068402+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -205,6 +217,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:43:00.291366+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -221,6 +234,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:43:37.346515+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -237,6 +251,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:44:05.015487+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -253,6 +268,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:44:38.487946+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -269,6 +285,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:45:29.201742+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -285,6 +302,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:46:22.218051+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -301,6 +319,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-03T16:47:26.850847+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -317,6 +336,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-04T03:19:11.940931+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -333,6 +353,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-04T03:19:39.822085+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -349,6 +370,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-04T03:20:31.770001+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -365,6 +387,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-04T03:22:30.849784+00:00",
+    "is_test": false,
     "version_count": 1
   },
   {
@@ -381,22 +404,7 @@
     "active": true,
     "status": "active",
     "last_checked_at": "2026-11-04T03:23:27.815078+00:00",
+    "is_test": false,
     "version_count": 1
-  },
-  {
-    "id": "bd40b560-4f3d-44d2-8222-a4a0ce93c911",
-    "url": "https://webhook.site/4920368c-1f5c-4800-9dd0-ddcea79b4cbf",
-    "title": "Acme Cloud Platform Pricing",
-    "category": "saas_pricing",
-    "monitor_id": "8decfc98-abf3-4401-8535-05d13d4673ad",
-    "schedule_cron": "1 */6 * * *",
-    "interval_label": "2h",
-    "ignore_selectors": [],
-    "added_at": "2026-11-04T03:43:53.509259+00:00",
-    "history_starts_at": "2026-11-04T03:43:53.509259+00:00",
-    "active": true,
-    "status": "active",
-    "last_checked_at": "2026-11-04T03:44:12.223117+00:00",
-    "version_count": 2
   }
 ]

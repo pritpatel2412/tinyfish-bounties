@@ -48,11 +48,16 @@ def init_db(db_path: str = DB_PATH):
                     history_starts_at TEXT,
                     active INTEGER NOT NULL DEFAULT 1,
                     status TEXT NOT NULL DEFAULT 'active',
-                    last_checked_at TEXT
+                    last_checked_at TEXT,
+                    is_test INTEGER NOT NULL DEFAULT 0
                 );
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_pages_url ON pages(url);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_pages_monitor ON pages(monitor_id);")
+            try:
+                conn.execute("ALTER TABLE pages ADD COLUMN is_test INTEGER NOT NULL DEFAULT 0;")
+            except Exception:
+                pass
 
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS versions (
@@ -131,15 +136,17 @@ class SqliteStore:
             added_at = page.get("added_at") or now_utc
             active = 1 if page.get("active", True) else 0
             ignore_sel = json.dumps(page.get("ignore_selectors", [])) if not isinstance(page.get("ignore_selectors"), str) else page.get("ignore_selectors")
+            is_test_val = 1 if page.get("is_test") else 0
             with conn:
                 conn.execute("""
                     INSERT INTO pages (id, url, title, category, monitor_id, schedule_cron, interval_label,
-                                       ignore_selectors, added_at, history_starts_at, active, status, last_checked_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                       ignore_selectors, added_at, history_starts_at, active, status, last_checked_at, is_test)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     page_id, page["url"], page.get("title"), page.get("category"), page.get("monitor_id"),
                     page.get("schedule_cron"), page.get("interval_label"), ignore_sel,
-                    added_at, page.get("history_starts_at"), active, page.get("status", "active"), page.get("last_checked_at")
+                    added_at, page.get("history_starts_at"), active, page.get("status", "active"), page.get("last_checked_at"),
+                    is_test_val
                 ))
             return self.get_page(page_id)  # type: ignore
         finally:
@@ -153,7 +160,7 @@ class SqliteStore:
             if not row:
                 return None
             d = dict(row)
-            d["active"] = bool(d["active"])
+            d["active"] = bool(d["active"]); d["is_test"] = bool(d.get("is_test", 0))
             try:
                 d["ignore_selectors"] = json.loads(d["ignore_selectors"] or "[]")
             except Exception:
@@ -170,7 +177,7 @@ class SqliteStore:
             if not row:
                 return None
             d = dict(row)
-            d["active"] = bool(d["active"])
+            d["active"] = bool(d["active"]); d["is_test"] = bool(d.get("is_test", 0))
             try:
                 d["ignore_selectors"] = json.loads(d["ignore_selectors"] or "[]")
             except Exception:
@@ -191,7 +198,7 @@ class SqliteStore:
             results = []
             for row in cur.fetchall():
                 d = dict(row)
-                d["active"] = bool(d["active"])
+                d["active"] = bool(d["active"]); d["is_test"] = bool(d.get("is_test", 0))
                 try:
                     d["ignore_selectors"] = json.loads(d["ignore_selectors"] or "[]")
                 except Exception:
@@ -210,7 +217,7 @@ class SqliteStore:
                 if k in ("id", "url"):
                     continue
                 set_clauses.append(f"{k} = ?")
-                if k == "active":
+                if k in ("active", "is_test"):
                     params.append(1 if v else 0)
                 elif k == "ignore_selectors" and not isinstance(v, str):
                     params.append(json.dumps(v))

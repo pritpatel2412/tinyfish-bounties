@@ -82,10 +82,14 @@ def main():
 
     # 2. Tracked Pages Overview
     print("\n[2] TRACKED PAGES OVERVIEW")
-    pages = store.list_pages()
+    all_db_pages = store.list_pages()
+    pages = [p for p in all_db_pages if not p.get("is_test")]
+    test_pages = [p for p in all_db_pages if p.get("is_test")]
     active_pages = [p for p in pages if p.get("active")]
     inactive_pages = [p for p in pages if not p.get("active")]
-    print(f"  • Total Tracked Pages:  {len(pages)} ({len(active_pages)} active, {len(inactive_pages)} inactive)")
+    print(f"  • Real Tracked Pages:   {len(pages)} ({len(active_pages)} active, {len(inactive_pages)} inactive)")
+    if test_pages:
+        print(f"  • Test/Verification:    {len(test_pages)} page(s) isolated (is_test=true)")
 
     # Categories breakdown
     cats = {}
@@ -110,10 +114,11 @@ def main():
         print(f"    - {out.upper():<12}: {count}")
 
     # 4. Changes Caught in Last 24h
-    print("\n[4] MATERIAL CHANGES CAUGHT (24h)")
-    changed_checks = [c for c in recent_checks if c.get("outcome") == "changed"]
+    print("\n[4] REAL MATERIAL CHANGES CAUGHT (24h, non-test)")
+    real_page_ids = {p["id"] for p in pages}
+    changed_checks = [c for c in recent_checks if c.get("outcome") == "changed" and c.get("page_id") in real_page_ids]
     if not changed_checks:
-        print("  • No material changes recorded in the last 24 hours.")
+        print("  • Real changes caught: 0 (Baseline monitoring active; clock started).")
     else:
         for idx, chk in enumerate(changed_checks, 1):
             detail = chk.get("detail", {})

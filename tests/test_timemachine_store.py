@@ -138,3 +138,4 @@ def test_get_store_factory(monkeypatch):
     monkeypatch.setenv("STORE_BACKEND", "sqlite")
     st = get_store()
     assert isinstance(st, SqliteStore)
+

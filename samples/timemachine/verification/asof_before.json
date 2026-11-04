@@ -1,0 +1,28 @@
+{
+  "id": "b4a2f925-ee83-4660-a6e4-ab71cf315527",
+  "page_id": "bd40b560-4f3d-44d2-8222-a4a0ce93c911",
+  "version_no": 1,
+  "observed_at": "2026-11-04T03:43:53.509259+00:00",
+  "processed_at": "2026-11-04T03:44:05.714160+00:00",
+  "lag_seconds": 0,
+  "content_hash": "c7196c8931e38891e86e00fbbc12b211c04d95da803058f21d803d69278b83f7",
+  "blocks": [
+    {
+      "id": "d68c48a2605bfcba",
+      "heading_path": "root",
+      "text": "Acme Cloud Platform Pricing\nStandard Plan\nPrice: $29/mo\n5 team members\n10GB cloud storage\nStandard email support",
+      "norm_hash": "c7196c8931e38891e86e00fbbc12b211c04d95da803058f21d803d69278b83f7"
+    }
+  ],
+  "text_md": "Acme Cloud Platform Pricing\nStandard Plan\nPrice: $29/mo\n5 team members\n10GB cloud storage\nStandard email support",
+  "screenshot_url": "data\\shots\\tm_c474e34120c1.jpg",
+  "screenshot_at": "2026-11-04T03:44:04.157236+00:00",
+  "source_url": "https://webhook.site/4920368c-1f5c-4800-9dd0-ddcea79b4cbf",
+  "run_id": "08f66f55-1772-4899-8f5d-880d5d718180",
+  "classification": {
+    "type": "baseline",
+    "materiality": 1.0,
+    "summary": "Initial baseline snapshot"
+  },
+  "summary": "Initial baseline snapshot"
+}

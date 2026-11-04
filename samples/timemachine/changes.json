@@ -1,20 +1,4 @@
 {
-  "total_changes": 1,
-  "changes": [
-    {
-      "page_id": "bd40b560-4f3d-44d2-8222-a4a0ce93c911",
-      "url": "https://webhook.site/4920368c-1f5c-4800-9dd0-ddcea79b4cbf",
-      "title": "Acme Cloud Platform Pricing",
-      "category": "saas_pricing",
-      "version_no": 2,
-      "observed_at": "2026-11-04T03:44:12.223117+00:00",
-      "summary": "The Standard Plan price increased from $29 to $49 per month, accompanied by significant upgrades to team size, storage, and support levels.",
-      "classification": {
-        "type": "price",
-        "materiality": 0.9,
-        "summary": "The Standard Plan price increased from $29 to $49 per month, accompanied by significant upgrades to team size, storage, and support levels."
-      },
-      "screenshot_url": "data\\shots\\tm_33b8414b5f4d.jpg"
-    }
-  ]
+  "total_changes": 0,
+  "changes": []
 }
