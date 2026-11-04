@@ -305,12 +305,28 @@ class SqliteStore:
             conn.close()
 
     def update_version(self, version_id: str, updates: dict) -> dict | None:
-        url = f"{self.sb_url}/rest/v1/versions?id=eq.{version_id}"
-        resp = self.client.patch(url, headers=self.headers, json=updates)
-        if resp.status_code == 200:
-            arr = resp.json()
-            return arr[0] if arr else None
-        return None
+        conn = self._conn()
+        try:
+            set_clauses = []
+            params = []
+            for k, v in updates.items():
+                if k in ("id", "page_id", "version_no"):
+                    continue
+                set_clauses.append(f"{k} = ?")
+                if k in ("blocks", "classification") and not isinstance(v, str) and v is not None:
+                    params.append(json.dumps(v))
+                else:
+                    params.append(v)
+            if not set_clauses:
+                return None
+            params.append(version_id)
+            with conn:
+                conn.execute(f"UPDATE versions SET {', '.join(set_clauses)} WHERE id = ?", tuple(params))
+            cur = conn.execute("SELECT * FROM versions WHERE id = ?", (version_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
 
     def get_latest_version(self, page_id: str) -> dict | None:
         conn = self._conn()

@@ -411,3 +411,47 @@ When a scheduled check detects a change (or finishes a run), TinyFish POSTs to `
   - `store.py` provides `SqliteStore` and `SupabaseStore` through `get_store()`.
   - `ScreenshotStore` targets Supabase Storage bucket `shots` (with local `/data/shots` fallback).
   - Migration schema defined in `infra/supabase/timemachine.sql`.
+
+
+---
+
+## 8. Scheduled Flow Cadence Verification (Step 6)
+
+`scripts/verify_scheduled_flow.py` executed live verification against all 24 non-test pages on 2026-11-04:
+
+```text
+Loaded 24 tracked non-test pages from database.
+Verification Timestamp: 2026-11-04T11:07:13.665521+00:00
+
+=============================================================================================================================
+Page URL / Title                           | Int   | Last Scheduled Check At     | Outcome    | Mins to Next / Overdue | Status
+-----------------------------------------------------------------------------------------------------------------------------
+Rate Limits - GroqDocs                     | 2h    | 2026-11-04T11:01:53.306833+00:00 | unchanged  | In 114.7 min           | [OK]
+Rate limits | Gemini API | Google...       | 2h    | 2026-11-04T11:03:04.583969+00:00 | unchanged  | In 115.8 min           | [OK]
+Business Pricing                           | 6h    | 2026-11-04T11:03:17.834557+00:00 | changed    | In 356.1 min           | [OK]
+Pricing and Plans                          | 6h    | 2026-11-04T11:03:20.771715+00:00 | unchanged  | In 356.1 min           | [OK]
+Pricing & Fees | Supabase                  | 6h    | 2026-11-04T11:03:26.017945+00:00 | unchanged  | In 356.2 min           | [OK]
+Pricing                                    | 6h    | 2026-11-04T11:03:30.253350+00:00 | changed    | In 356.3 min           | [OK]
+Cursor - Pricing                           | 6h    | 2026-11-04T11:03:34.053928+00:00 | unchanged  | In 356.3 min           | [OK]
+GitHub Copilot - Plans & pricing           | 6h    | 2026-11-04T11:03:39.104005+00:00 | unchanged  | In 356.4 min           | [OK]
+Pricing - Hugging Face                     | 6h    | 2026-11-04T11:03:43.001200+00:00 | unchanged  | In 356.5 min           | [OK]
+Pricing and Plans | Netlify                | 6h    | 2026-11-04T11:03:46.536226+00:00 | unchanged  | In 356.5 min           | [OK]
+Pricing & Fees (Stripe)                    | 6h    | 2026-11-04T11:03:51.428530+00:00 | changed    | In 356.6 min           | [OK]
+Pricing - Resend                           | 6h    | 2026-11-04T11:03:57.337985+00:00 | unchanged  | In 356.7 min           | [OK]
+Terms of Use (OpenAI)                      | 6h    | 2026-11-04T11:04:03.903847+00:00 | unchanged  | In 356.8 min           | [OK]
+Privacy Policy - Google                    | 6h    | 2026-11-04T11:04:12.666991+00:00 | unchanged  | In 357.0 min           | [OK]
+GitHub Terms of Service                    | 6h    | 2026-11-04T11:04:16.419277+00:00 | unchanged  | In 357.0 min           | [OK]
+Terms of Service (Vercel)                  | 6h    | 2026-11-04T11:04:21.887906+00:00 | unchanged  | In 357.1 min           | [OK]
+Student visa (Gov.uk)                      | 6h    | 2026-11-04T11:04:26.170147+00:00 | unchanged  | In 357.2 min           | [OK]
+Skilled Worker visa (Gov.uk)               | 6h    | 2026-11-04T11:04:30.453355+00:00 | unchanged  | In 357.3 min           | [OK]
+Changelog - Vercel                         | 2h    | 2026-11-04T11:04:35.115957+00:00 | changed    | In 117.4 min           | [OK]
+Claude Platform release notes              | 2h    | 2026-11-04T11:04:42.320737+00:00 | unchanged  | In 117.5 min           | [OK]
+USCIS Alerts                               | 2h    | 2026-11-04T11:04:45.666340+00:00 | unchanged  | In 117.5 min           | [OK]
+OpenAI Status                              | 2h    | 2026-11-04T11:04:51.104033+00:00 | unchanged  | In 117.6 min           | [OK]
+Groq Status                                | 2h    | 2026-11-04T11:04:55.361612+00:00 | unchanged  | In 117.7 min           | [OK]
+GitHub Copilot licenses                    | 2h    | 2026-11-04T11:05:00.906410+00:00 | unchanged  | In 117.8 min           | [OK]
+=============================================================================================================================
+
+Summary: 24 total pages | 24 on cadence | 0 flagged
+[OK] All pages are verified within scheduled monitoring cadence. Zero drift detected.
+```

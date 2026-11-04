@@ -94,3 +94,7 @@
 ### Decision 21: Render Cloud Readiness & Enhanced Health Telemetry (Step 5)
 - **Finding**: Free-tier cloud hosts experience container restarts and sleep cycles, requiring dynamic port binding (`$PORT`), Singapore regional routing for low latency, cold-start event queue draining, and comprehensive operational health telemetry.
 - **Decision**: Configured `Dockerfile` to dynamically bind to `${PORT:-8000}`. Updated `render.yaml` for `region: singapore` with all required production environment variables. Enhanced `apps/timemachine/api.py` and `tinycore/api_common.py` to drain pending events on container boot (`processor_worker.wake()`) and report heartbeat age, unprocessed events, active/paused monitor counts, wallet balance, daily spend, store backend, git sha, and uptime seconds on `/health`.
+
+### Decision 22: Scheduled-Flow Verification & Cadence Proof (Step 6)
+- **Finding**: Verifying continuous monitoring requires mathematical proof that every tracked target has an active check within 1.5× its schedule interval, with outcomes classified and logged.
+- **Decision**: Implemented `scripts/verify_scheduled_flow.py` inspecting all 24 non-test pages in database. Supported `--trigger-due` to execute due monitor runs and drain events through the processing pipeline. Verified 24/24 pages are on cadence (0 flagged) with next checks scheduled in 115–358 minutes. Committed the live verification table to `TINYFISH_NOTES.md`.
