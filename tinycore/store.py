@@ -76,11 +76,21 @@ def init_db(db_path: str = DB_PATH):
                     run_id TEXT,
                     classification TEXT,
                     summary TEXT,
+                    review_status TEXT NOT NULL DEFAULT 'unreviewed',
+                    review_note TEXT,
                     UNIQUE(page_id, version_no)
                 );
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_ver_page_no ON versions(page_id, version_no);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_ver_observed ON versions(page_id, observed_at);")
+            try:
+                conn.execute("ALTER TABLE versions ADD COLUMN review_status TEXT NOT NULL DEFAULT 'unreviewed';")
+            except Exception:
+                pass
+            try:
+                conn.execute("ALTER TABLE versions ADD COLUMN review_note TEXT;")
+            except Exception:
+                pass
 
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS diffs (
@@ -100,10 +110,15 @@ def init_db(db_path: str = DB_PATH):
                     observed_at TEXT NOT NULL,
                     run_id TEXT UNIQUE,
                     outcome TEXT NOT NULL,
-                    detail TEXT
+                    detail TEXT,
+                    trigger TEXT NOT NULL DEFAULT 'scheduled'
                 );
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_checks_page ON checks(page_id, observed_at);")
+            try:
+                conn.execute("ALTER TABLE checks ADD COLUMN trigger TEXT NOT NULL DEFAULT 'scheduled';")
+            except Exception:
+                pass
 
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS monitor_events (
@@ -253,12 +268,13 @@ class SqliteStore:
                 conn.execute("""
                     INSERT INTO versions (id, page_id, version_no, observed_at, processed_at, lag_seconds,
                                          content_hash, blocks, text_md, screenshot_url, screenshot_at,
-                                         source_url, run_id, classification, summary)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                         source_url, run_id, classification, summary, review_status, review_note)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     vid, v["page_id"], v["version_no"], v["observed_at"], proc_at, v.get("lag_seconds"),
                     v["content_hash"], blocks_raw, v.get("text_md"), v.get("screenshot_url"),
-                    v.get("screenshot_at"), v["source_url"], v.get("run_id"), class_raw, v.get("summary")
+                    v.get("screenshot_at"), v["source_url"], v.get("run_id"), class_raw, v.get("summary"),
+                    v.get("review_status", "unreviewed"), v.get("review_note")
                 ))
             return self.get_version(v["page_id"], v["version_no"])  # type: ignore
         finally:
@@ -432,14 +448,17 @@ class SqliteStore:
         conn = self._conn()
         try:
             chk_id = check.get("id") or str(uuid.uuid4())
-            detail_raw = json.dumps(check.get("detail", {})) if not isinstance(check.get("detail"), str) else check.get("detail")
+            trigger = check.get("trigger") or check.get("detail", {}).get("trigger", "scheduled")
+            detail_dict = dict(check.get("detail", {})) if isinstance(check.get("detail"), dict) else {}
+            detail_dict["trigger"] = trigger
+            detail_raw = json.dumps(detail_dict)
             with conn:
                 conn.execute("""
-                    INSERT OR IGNORE INTO checks (id, page_id, observed_at, run_id, outcome, detail)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT OR IGNORE INTO checks (id, page_id, observed_at, run_id, outcome, detail, trigger)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
                     chk_id, check["page_id"], check["observed_at"], check.get("run_id"),
-                    check["outcome"], detail_raw
+                    check["outcome"], detail_raw, trigger
                 ))
             return {
                 "id": chk_id,
@@ -447,7 +466,8 @@ class SqliteStore:
                 "observed_at": check["observed_at"],
                 "run_id": check.get("run_id"),
                 "outcome": check["outcome"],
-                "detail": check.get("detail", {})
+                "trigger": trigger,
+                "detail": detail_dict
             }
         finally:
             conn.close()
@@ -466,6 +486,7 @@ class SqliteStore:
                     d["detail"] = json.loads(d["detail"] or "{}")
                 except Exception:
                     d["detail"] = {}
+                d["trigger"] = d.get("trigger") or d.get("detail", {}).get("trigger", "scheduled")
                 res.append(d)
             return res
         finally:
@@ -619,7 +640,26 @@ class SupabaseStore:
         return None
 
     def add_check(self, check: dict) -> dict:
-        return self._post("checks", check)
+        chk = dict(check)
+        trigger = chk.get("trigger") or chk.get("detail", {}).get("trigger", "scheduled")
+        if "detail" in chk and isinstance(chk["detail"], dict):
+            chk["detail"]["trigger"] = trigger
+        elif "detail" not in chk:
+            chk["detail"] = {"trigger": trigger}
+        chk["trigger"] = trigger
+        try:
+            res = self._post("checks", chk)
+            res["trigger"] = trigger
+            return res
+        except Exception as e:
+            err_str = str(e)
+            if "trigger" in err_str and ("schema cache" in err_str or "does not exist" in err_str):
+                chk_no_trig = dict(chk)
+                chk_no_trig.pop("trigger", None)
+                res = self._post("checks", chk_no_trig)
+                res["trigger"] = trigger
+                return res
+            raise
 
     def get_checks(self, page_id: str | None = None, limit: int = 100) -> list[dict]:
         url = f"{self.sb_url}/rest/v1/checks?order=observed_at.desc&limit={limit}"
@@ -627,7 +667,10 @@ class SupabaseStore:
             url += f"&page_id=eq.{page_id}"
         resp = self.client.get(url, headers=self.headers)
         if resp.status_code == 200:
-            return resp.json()
+            arr = resp.json()
+            for c in arr:
+                c["trigger"] = c.get("trigger") or (c.get("detail") or {}).get("trigger", "scheduled")
+            return arr
         return []
 
 

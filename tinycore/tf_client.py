@@ -158,7 +158,7 @@ class TF:
 
     def fetch(self, url: str, format: str = "markdown") -> FetchResult:
         """Fetch and render page via TinyFish Fetch API (Chromium-rendered, noise-cleaned). Free of charge."""
-        CostLedger.check_budget(RATES["fetch"])
+        CostLedger.check_budget(RATES["fetch"], endpoint="fetch")
         endpoint_url = FETCH_BASE_URL
         t0 = time.time()
         ok = False

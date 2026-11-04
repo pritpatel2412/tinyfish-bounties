@@ -171,6 +171,7 @@ def add_page(
         "observed_at": observed_at,
         "run_id": run_id,
         "outcome": "baseline",
+        "trigger": "baseline",
         "detail": {
             "version_no": 1,
             "blocks_count": len(blocks),

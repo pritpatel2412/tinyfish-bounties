@@ -16,6 +16,7 @@ import json
 import time
 import logging
 import threading
+from collections import Counter
 from datetime import datetime, timezone
 from dotenv import dotenv_values
 
@@ -177,6 +178,7 @@ def process_single_event(event: dict, store=None, tf: TF | None = None) -> dict:
             "observed_at": observed_at,
             "run_id": run_id,
             "outcome": "error",
+            "trigger": "scheduled",
             "detail": {"errors": errors, "status": run_status}
         })
         mark_event_processed(event_id, store)
@@ -200,6 +202,7 @@ def process_single_event(event: dict, store=None, tf: TF | None = None) -> dict:
                 "observed_at": observed_at,
                 "run_id": run_id,
                 "outcome": "error",
+                "trigger": "scheduled",
                 "detail": {"error": f"Failed to retrieve page text: {e}"}
             })
             mark_event_processed(event_id, store)
@@ -235,6 +238,7 @@ def process_single_event(event: dict, store=None, tf: TF | None = None) -> dict:
             "observed_at": observed_at,
             "run_id": run_id,
             "outcome": "baseline",
+            "trigger": "baseline",
             "detail": {"version_no": 1}
         })
         mark_event_processed(event_id, store)
@@ -249,6 +253,7 @@ def process_single_event(event: dict, store=None, tf: TF | None = None) -> dict:
             "observed_at": observed_at,
             "run_id": run_id,
             "outcome": "unchanged",
+            "trigger": "scheduled",
             "detail": {"content_hash": new_hash}
         })
         mark_event_processed(event_id, store)
@@ -269,12 +274,93 @@ def process_single_event(event: dict, store=None, tf: TF | None = None) -> dict:
             "observed_at": observed_at,
             "run_id": run_id,
             "outcome": "noise",
+            "trigger": "scheduled",
             "detail": {"reason": "Transient dates or metadata", "content_hash": new_hash}
         })
         mark_event_processed(event_id, store)
         return {"status": "success", "outcome": "noise", "page_id": page_id}
 
-    # Case B2: Real material change detected!
+    # Case B2: Potential material change detected! Perform 3-observation confirmation (C3)
+    logger.info(f"Potential change detected for {page['url']}. Performing confirmation fetches (C3)...")
+    wait_s = float(os.getenv("CONFIRMATION_WAIT_SECONDS", "0.0" if os.getenv("PYTEST_CURRENT_TEST") else "90.0"))
+
+    # Observation 1: from monitor payload
+    obs1_hash = new_hash
+    obs1_text = new_text_md
+
+    # Observation 2: immediate Fetch #1
+    obs2_hash = "error"
+    obs2_text = ""
+    try:
+        f1 = tf.fetch(page["url"], format="markdown")
+        obs2_text = f1.text
+        obs2_hash = compute_norm_hash(obs2_text)
+    except Exception as e:
+        logger.warning(f"Confirmation fetch 1 failed for {page['url']}: {e}")
+
+    # Wait >=90s before Fetch #2 (configurable for tests via CONFIRMATION_WAIT_SECONDS)
+    if wait_s > 0:
+        time.sleep(wait_s)
+
+    # Observation 3: Fetch #2
+    obs3_hash = "error"
+    obs3_text = ""
+    try:
+        f2 = tf.fetch(page["url"], format="markdown")
+        obs3_text = f2.text
+        obs3_hash = compute_norm_hash(obs3_text)
+    except Exception as e:
+        logger.warning(f"Confirmation fetch 2 failed for {page['url']}: {e}")
+
+    # Calculate agreement among observations
+    obs_hashes = [obs1_hash, obs2_hash, obs3_hash]
+    counts = Counter(obs_hashes)
+    agreed_hash, agree_count = counts.most_common(1)[0]
+
+    prev_hash = prev_version.get("content_hash")
+    is_confirmed = (agree_count >= 2) and (agreed_hash != prev_hash) and (agreed_hash != "error")
+
+    if not is_confirmed:
+        reason = "reverted_to_previous" if agreed_hash == prev_hash else "flapping_or_unconfirmed"
+        logger.info(f"Change unconfirmed for {page['url']}: reason={reason}, agree_count={agree_count}/3")
+        store.update_page(page_id, {"last_checked_at": observed_at})
+        store.add_check({
+            "page_id": page_id,
+            "observed_at": observed_at,
+            "run_id": run_id,
+            "outcome": "unconfirmed",
+            "trigger": "scheduled",
+            "detail": {
+                "reason": reason,
+                "agree_count": agree_count,
+                "observations": [
+                    {"obs": 1, "hash": obs1_hash},
+                    {"obs": 2, "hash": obs2_hash},
+                    {"obs": 3, "hash": obs3_hash}
+                ],
+                "prev_hash": prev_hash
+            }
+        })
+        mark_event_processed(event_id, store)
+        return {
+            "status": "success",
+            "outcome": "unconfirmed",
+            "page_id": page_id,
+            "reason": reason
+        }
+
+    # If confirmed, determine which observation text matches agreed_hash
+    if agreed_hash == obs1_hash:
+        new_text_md = obs1_text
+    elif agreed_hash == obs2_hash:
+        new_text_md = obs2_text
+    else:
+        new_text_md = obs3_text
+
+    new_blocks = markdown_to_blocks(new_text_md, ignore_selectors=page.get("ignore_selectors"))
+    new_hash = agreed_hash
+    diff = diff_blocks(prev_blocks, new_blocks)
+
     now_utc = datetime.now(timezone.utc)
     processed_at = now_utc.isoformat()
     try:
@@ -283,7 +369,7 @@ def process_single_event(event: dict, store=None, tf: TF | None = None) -> dict:
     except Exception:
         lag_seconds = 0
 
-    # Screenshot immediately
+    # Screenshot immediately upon confirmed change
     screenshot_url = None
     screenshot_at = processed_at
     try:
@@ -324,9 +410,10 @@ def process_single_event(event: dict, store=None, tf: TF | None = None) -> dict:
     })
 
     # Classify via Groq LLM (Rule: Groq only labels, Python already decided change)
+    baseline_blocks_count = len(prev_blocks)
     classification = None
     try:
-        classification = classify_change(diff_dict)
+        classification = classify_change(diff_dict, baseline_blocks_count=baseline_blocks_count)
         if classification and hasattr(store, "update_version"):
             summary_txt = classification.get("summary")
             store.update_version(new_ver["id"], {
@@ -336,25 +423,31 @@ def process_single_event(event: dict, store=None, tf: TF | None = None) -> dict:
     except Exception as e:
         logger.warning(f"LLM classification failed (storing null): {e}")
 
-    # Store check
+    # Store check with review_status='unreviewed' (C5)
     store.add_check({
         "page_id": page_id,
         "observed_at": observed_at,
         "run_id": run_id,
         "outcome": "changed",
+        "trigger": "scheduled",
         "detail": {
             "version_no": new_version_no,
+            "version_id": new_ver.get("id"),
             "added_count": len(diff.added),
             "removed_count": len(diff.removed),
             "changed_count": len(diff.changed),
             "classification": classification,
-            "screenshot_url": screenshot_url
+            "screenshot_url": screenshot_url,
+            "confirmed": True,
+            "agree_count": agree_count,
+            "review_status": "unreviewed",
+            "review_note": None
         }
     })
 
     store.update_page(page_id, {"last_checked_at": observed_at})
     mark_event_processed(event_id, store)
-    logger.info(f"Successfully processed change for {page['url']}: Version {new_version_no} created.")
+    logger.info(f"Successfully processed confirmed change for {page['url']}: Version {new_version_no} created.")
     return {
         "status": "success",
         "outcome": "changed",

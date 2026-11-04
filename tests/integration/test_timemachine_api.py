@@ -23,8 +23,13 @@ def test_db_store(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def client(test_db_store):
+def client(test_db_store, monkeypatch):
     # Disable background worker thread during fast unit tests
+    monkeypatch.setattr("apps.timemachine.api.processor_worker.start", lambda: None)
+    monkeypatch.setattr("apps.timemachine.api.processor_worker.stop", lambda: None)
+    monkeypatch.setattr("apps.timemachine.api.processor_worker.wake", lambda: 0)
+    monkeypatch.setattr("apps.timemachine.api.watchdog_worker.start", lambda: None)
+    monkeypatch.setattr("apps.timemachine.api.watchdog_worker.stop", lambda: None)
     with TestClient(app) as test_client:
         yield test_client
 
@@ -84,6 +89,7 @@ def seeded_page(test_db_store):
         "screenshot_at": "2026-11-02T12:01:00Z",
         "source_url": page["url"],
         "run_id": "run_02",
+        "review_status": "real",
         "classification": {"category": "pricing", "materiality": 0.8, "summary": "Price hike"},
         "summary": "Standard plan increased to $25"
     })
@@ -92,7 +98,7 @@ def seeded_page(test_db_store):
         "observed_at": "2026-11-02T12:00:00Z",
         "run_id": "run_02",
         "outcome": "changed",
-        "detail": {"version_no": 2, "classification": {"materiality": 0.8, "summary": "Price hike"}}
+        "detail": {"version_no": 2, "review_status": "real", "classification": {"materiality": 0.8, "summary": "Price hike"}}
     })
     test_db_store.add_diff({
         "page_id": page["id"],

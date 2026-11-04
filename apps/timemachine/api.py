@@ -20,7 +20,19 @@ from typing import Any
 
 from fastapi import FastAPI, Request, Query, HTTPException, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, field_validator
+
+
+class ScreenshotValidator(BaseModel):
+    screenshot_url: str | None = None
+
+    @field_validator("screenshot_url")
+    @classmethod
+    def validate_https_in_prod(cls, v: str | None) -> str | None:
+        if v and (os.getenv("ENV") == "production" or os.getenv("RENDER") in ("true", "1")):
+            if not v.startswith("https://"):
+                raise ValueError(f"In production, screenshot_url must be an https URL, got: {v}")
+        return v
 
 from tinycore.api_common import create_app
 from tinycore.store import get_store
@@ -84,7 +96,7 @@ def get_tm_health() -> dict:
     wallet_balance = None
     if watchdog_worker.last_result:
         wallet_balance = watchdog_worker.last_result.get("wallet_balance_usd")
-    if wallet_balance is None:
+    if wallet_balance is None and os.getenv("PYTEST_CURRENT_TEST") is None:
         try:
             api_key = os.getenv("TINYFISH_API_KEY")
             if api_key:
@@ -110,12 +122,28 @@ def get_tm_health() -> dict:
     if is_degraded:
         logger.warning(f"[HEALTH DEGRADED] {', '.join(degraded_reasons)}")
 
+    # Public clock metrics (computed from trigger='scheduled' only)
+    all_checks = store.get_checks(limit=500)
+    scheduled_checks = [c for c in all_checks if c.get("trigger") == "scheduled"]
+    scheduled_checks_total = len(scheduled_checks)
+    first_scheduled_check_at = min((c["observed_at"] for c in scheduled_checks), default=None)
+    days_of_scheduled_history = 0.0
+    if first_scheduled_check_at:
+        try:
+            f_dt = datetime.fromisoformat(first_scheduled_check_at.replace("Z", "+00:00"))
+            days_of_scheduled_history = round((datetime.now(timezone.utc) - f_dt).total_seconds() / 86400.0, 3)
+        except Exception:
+            days_of_scheduled_history = 0.0
+
     return {
         "status": status_str,
         "processor_heartbeat_age_s": heartbeat_age_s,
         "unprocessed_events_count": unprocessed_count,
         "monitors_active": monitors_active,
         "monitors_paused": monitors_paused,
+        "first_scheduled_check_at": first_scheduled_check_at,
+        "scheduled_checks_total": scheduled_checks_total,
+        "days_of_scheduled_history": days_of_scheduled_history,
         "wallet_balance_usd": wallet_balance,
         "degraded_reasons": degraded_reasons
     }
@@ -191,6 +219,11 @@ class PageCreateRequest(BaseModel):
     title: str | None = None
     category: str | None = "general"
     cron: str | None = None
+
+
+class ChangeReviewRequest(BaseModel):
+    review_status: str  # "unreviewed" | "real" | "artifact"
+    review_note: str | None = None
 
 
 # --- Helper Utilities ---
@@ -324,7 +357,7 @@ def get_page_timeline(page_id: str):
             "observed_at": v["observed_at"],
             "processed_at": v["processed_at"],
             "content_hash": v["content_hash"],
-            "screenshot_url": v.get("screenshot_url"),
+            "screenshot_url": ScreenshotValidator(screenshot_url=v.get("screenshot_url")).screenshot_url,
             "source_url": v["source_url"],
             "summary": v.get("summary"),
             "classification": v.get("classification")
@@ -488,18 +521,73 @@ def get_page_version_endpoint(page_id: str, version_no: int):
     return ver
 
 
+@app.post("/admin/changes/{change_id}/review")
+def review_change_endpoint(change_id: str, req: ChangeReviewRequest, request: Request):
+    """Human review gate setting verification status (unreviewed | real | artifact) with note."""
+    verify_admin_token(request)
+    if req.review_status not in ("unreviewed", "real", "artifact"):
+        return json_error("BAD_REQUEST", "review_status must be 'unreviewed', 'real', or 'artifact'", status_code=400)
+
+    store = get_store()
+    checks = store.get_checks(limit=500)
+    chk = next((c for c in checks if c["id"] == change_id or str(c.get("detail", {}).get("version_id")) == change_id), None)
+    if not chk:
+        return json_error("CHANGE_NOT_FOUND", f"Change with ID '{change_id}' not found", status_code=404)
+
+    detail = dict(chk.get("detail", {}))
+    detail["review_status"] = req.review_status
+    detail["review_note"] = req.review_note
+
+    if hasattr(store, "_conn"):
+        conn = store._conn()
+        try:
+            with conn:
+                conn.execute("UPDATE checks SET detail = ? WHERE id = ?", (json.dumps(detail), chk["id"]))
+        finally:
+            conn.close()
+    elif hasattr(store, "client"):
+        url = f"{store.sb_url}/rest/v1/checks?id=eq.{chk['id']}"
+        store.client.patch(url, headers=store.headers, json={"detail": detail})
+
+    p_id = chk["page_id"]
+    v_no = detail.get("version_no")
+    if v_no and hasattr(store, "get_version"):
+        v = store.get_version(p_id, v_no)
+        if v and hasattr(store, "update_version"):
+            store.update_version(v["id"], {
+                "review_status": req.review_status,
+                "review_note": req.review_note
+            })
+
+    return {
+        "status": "success",
+        "change_id": change_id,
+        "page_id": p_id,
+        "review_status": req.review_status,
+        "review_note": req.review_note
+    }
+
+
 @app.get("/changes")
 def list_changes_feed(
     since: str | None = Query(None, description="Filter changes observed since ISO timestamp"),
     category: str | None = Query(None, description="Filter by page category"),
     min_materiality: float | None = Query(None, description="Minimum materiality score (0.0 - 1.0)"),
+    include: str = Query("real", description="Review filter: 'real' (default) or 'all'"),
     include_test: bool = Query(False, description="Include test changes if true")
 ):
-    """Global feed of real detected changes across all monitored pages."""
+    """Global feed of real detected changes across monitored pages. Defaults to verified real changes."""
     store = get_store()
     all_pages = {p["id"]: p for p in store.list_pages()}
     all_checks = store.get_checks(limit=500)
 
+    since_val = since if isinstance(since, str) and since else None
+    cat_val = category if isinstance(category, str) and category else None
+    min_mat_val = min_materiality if isinstance(min_materiality, (int, float)) else None
+    include_val = include if isinstance(include, str) and include else "real"
+    include_test_val = include_test if isinstance(include_test, bool) else False
+
+    unreviewed_count = 0
     changes = []
     for chk in all_checks:
         if chk.get("outcome") != "changed":
@@ -510,24 +598,39 @@ def list_changes_feed(
         if not page:
             continue
 
-        if not include_test and page.get("is_test"):
+        if not include_test_val and page.get("is_test"):
             continue
 
-        if category and page.get("category") != category:
+        if cat_val and page.get("category") != cat_val:
             continue
 
         obs_at = chk["observed_at"]
-        if since and obs_at < since:
+        if since_val and obs_at < since_val:
             continue
 
         detail = chk.get("detail", {})
         classification = detail.get("classification") or {}
         materiality = classification.get("materiality", 0.5)
 
-        if min_materiality is not None and materiality < min_materiality:
+        if min_mat_val is not None and materiality < min_mat_val:
+            continue
+
+        review_status = detail.get("review_status")
+        if not review_status:
+            v_no = detail.get("version_no")
+            if v_no is not None:
+                v_obj = store.get_version(p_id, v_no)
+                if v_obj:
+                    review_status = v_obj.get("review_status")
+        review_status = review_status or "unreviewed"
+        if review_status == "unreviewed":
+            unreviewed_count += 1
+
+        if include_val != "all" and review_status != "real":
             continue
 
         changes.append({
+            "id": chk["id"],
             "page_id": p_id,
             "url": page["url"],
             "title": page.get("title"),
@@ -536,11 +639,14 @@ def list_changes_feed(
             "observed_at": obs_at,
             "summary": classification.get("summary") or "Content change detected",
             "classification": classification,
-            "screenshot_url": detail.get("screenshot_url")
+            "screenshot_url": ScreenshotValidator(screenshot_url=detail.get("screenshot_url")).screenshot_url,
+            "review_status": review_status,
+            "review_note": detail.get("review_note")
         })
 
     return {
         "total_changes": len(changes),
+        "unreviewed_count": unreviewed_count,
         "changes": changes
     }
 
@@ -555,11 +661,30 @@ def public_logs_feed(
     all_pages = {p["id"]: p for p in store.list_pages()}
     checks = store.get_checks(limit=limit)
 
-    logs = []
+    filtered_checks = []
     for chk in checks:
         page = all_pages.get(chk["page_id"], {})
         if not include_test and page.get("is_test"):
             continue
+        filtered_checks.append(chk)
+
+    # Compute summary counts strictly by trigger provenance
+    scheduled_checks = [c for c in filtered_checks if c.get("trigger") == "scheduled"]
+    scheduled_checks_total = len(scheduled_checks)
+    manual_checks_total = len([c for c in filtered_checks if c.get("trigger") == "manual"])
+    baseline_checks_total = len([c for c in filtered_checks if c.get("trigger") == "baseline"])
+    first_scheduled_check_at = min((c["observed_at"] for c in scheduled_checks), default=None)
+    days_of_scheduled_history = 0.0
+    if first_scheduled_check_at:
+        try:
+            f_dt = datetime.fromisoformat(first_scheduled_check_at.replace("Z", "+00:00"))
+            days_of_scheduled_history = round((datetime.now(timezone.utc) - f_dt).total_seconds() / 86400.0, 3)
+        except Exception:
+            days_of_scheduled_history = 0.0
+
+    logs = []
+    for chk in filtered_checks:
+        page = all_pages.get(chk["page_id"], {})
         logs.append({
             "id": chk["id"],
             "page_id": chk["page_id"],
@@ -568,12 +693,18 @@ def public_logs_feed(
             "category": page.get("category"),
             "run_id": chk.get("run_id"),
             "outcome": chk["outcome"],
+            "trigger": chk.get("trigger", "scheduled"),
             "observed_at": chk["observed_at"],
             "detail": chk.get("detail")
         })
 
     return {
         "count": len(logs),
+        "scheduled_checks_total": scheduled_checks_total,
+        "manual_checks_total": manual_checks_total,
+        "baseline_checks_total": baseline_checks_total,
+        "first_scheduled_check_at": first_scheduled_check_at,
+        "days_of_scheduled_history": days_of_scheduled_history,
         "logs": logs
     }
 

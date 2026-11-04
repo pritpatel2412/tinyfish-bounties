@@ -51,22 +51,17 @@ def parse_interval_minutes(page: dict) -> int:
 
 
 def trigger_due_checks(store, tf, pages, now_utc):
-    """Triggers monitor runs for pages overdue for a scheduled check."""
-    print("Checking for due monitors and triggering scheduled runs...\n")
+    """[DEBUGGING ONLY] Triggers monitor runs for pages overdue. Marks as manual trigger."""
+    print("[DEBUG ONLY] Manually triggering monitor runs for overdue pages (NOT scheduled flow proof)...\n")
     triggered = 0
     for p in pages:
         p_id = p["id"]
         interval_min = parse_interval_minutes(p)
-        checks = store.get_checks(page_id=p_id, limit=1)
+        checks = [c for c in store.get_checks(page_id=p_id, limit=20) if c.get("trigger") == "scheduled"]
         last_dt = None
         if checks:
             try:
                 last_dt = datetime.fromisoformat(checks[0]["observed_at"].replace("Z", "+00:00"))
-            except Exception:
-                pass
-        if not last_dt and p.get("last_checked_at"):
-            try:
-                last_dt = datetime.fromisoformat(p["last_checked_at"].replace("Z", "+00:00"))
             except Exception:
                 pass
 
@@ -80,10 +75,12 @@ def trigger_due_checks(store, tf, pages, now_utc):
 
         mon_id = p.get("monitor_id")
         if is_due and mon_id:
-            print(f"  [RUN] Triggering due monitor for: {p['url'][:55]} ({p.get('interval_label', '6h')})")
+            print(f"  [RUN] Triggering manual run for: {p['url'][:55]} ({p.get('interval_label', '6h')})")
             try:
                 run_data = tf.monitor_run(mon_id)
                 run_id = run_data.get("id") or run_data.get("run_id")
+                # Explicitly flag manual trigger
+                run_data["_manual_trigger"] = True
                 insert_incoming_event({
                     "monitor_id": mon_id,
                     "run_id": run_id,
@@ -95,7 +92,7 @@ def trigger_due_checks(store, tf, pages, now_utc):
                 print(f"    Error triggering run for {mon_id}: {e}")
 
     if triggered > 0:
-        print(f"\nProcessing {triggered} triggered check events...")
+        print(f"\nProcessing {triggered} manual check events...")
         processed = process_pending_events(store=store, tf=tf)
         print(f"Processed {processed} events successfully.\n")
 
@@ -128,13 +125,13 @@ def verify_flow(trigger_due: bool = False) -> int:
         interval_min = parse_interval_minutes(p)
         label = p.get("interval_label") or f"{interval_min // 60}h"
 
-        checks = store.get_checks(page_id=p_id, limit=1)
+        checks = [c for c in store.get_checks(page_id=p_id, limit=20) if c.get("trigger") == "scheduled"]
         if checks:
             latest_chk = checks[0]
             last_check_iso = latest_chk["observed_at"]
             outcome = latest_chk["outcome"]
         else:
-            last_check_iso = p.get("last_checked_at") or p.get("added_at") or "None"
+            last_check_iso = "None"
             outcome = "none"
 
         last_dt = None
@@ -158,7 +155,7 @@ def verify_flow(trigger_due: bool = False) -> int:
             is_overdue_threshold = elapsed_min > (1.5 * interval_min)
         else:
             elapsed_min = 999999
-            mins_str = "No check recorded"
+            mins_str = "No scheduled check"
             is_overdue_threshold = True
 
         is_paused = (not p.get("active")) or (p.get("status") == "paused")
@@ -196,8 +193,8 @@ def verify_flow(trigger_due: bool = False) -> int:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Verify scheduled monitoring flow for Time Machine.")
-    parser.add_argument("--trigger-due", action="store_true", help="Trigger scheduled check for overdue pages before verification")
+    parser = argparse.ArgumentParser(description="Verify scheduled monitoring flow for Time Machine (counts only trigger=scheduled).")
+    parser.add_argument("--trigger-due", action="store_true", help="[DEBUG ONLY] Trigger runs via POST /runs (marks trigger=manual, does not prove scheduled delivery)")
     args = parser.parse_args()
 
     exit_code = verify_flow(trigger_due=args.trigger_due)

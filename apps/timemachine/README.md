@@ -54,9 +54,16 @@ sequenceDiagram
         alt Diff is Pure Noise
             PW->>Store: Record check (outcome: "noise")
         else Diff Has Material Change
-            PW->>Groq: Classify change type & materiality
-            PW->>Store: Archive screenshot to bucket 'shots'
-            PW->>Store: Save new version & diff (outcome: "changed")
+            PW->>TF: Fetch twice (>=90s apart) for 3-way confirmation
+            alt >= 2 of 3 Agree
+                PW->>TF: Capture screenshot (Browser CDP)
+                PW->>Store: Archive screenshot to bucket 'shots' (public HTTPS)
+                PW->>Groq: Classify change type & summary (fallback chain)
+                PW->>Store: Save new version & diff (review_status: 'unreviewed')
+                PW->>Store: Record check (outcome: "changed")
+            else Flapping / Disagreed
+                PW->>Store: Record check (outcome: "unconfirmed")
+            end
         end
     end
     API->>Store: Query as-of state or change stream

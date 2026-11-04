@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS versions (
     run_id TEXT,
     classification JSONB,
     summary TEXT,
+    review_status TEXT NOT NULL DEFAULT 'unreviewed',
+    review_note TEXT,
     UNIQUE(page_id, version_no)
 );
 
@@ -61,6 +63,7 @@ CREATE TABLE IF NOT EXISTS checks (
     observed_at TIMESTAMPTZ NOT NULL,
     run_id TEXT UNIQUE,
     outcome TEXT NOT NULL, -- baseline | unchanged | noise | changed | error
+    trigger TEXT NOT NULL DEFAULT 'scheduled',
     detail JSONB
 );
 

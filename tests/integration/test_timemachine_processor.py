@@ -159,6 +159,9 @@ def test_material_change_detection(test_store, seeded_page):
     }, store=test_store)
 
     mock_tf = MagicMock()
+    mock_fetch_res = MagicMock()
+    mock_fetch_res.text = changed_text
+    mock_tf.fetch.return_value = mock_fetch_res
     mock_tf.screenshot.return_value = b"\xff\xd8\xff\xe0mock_screenshot_bytes"
 
     events = get_unprocessed_events(test_store)

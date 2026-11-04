@@ -99,7 +99,7 @@
 - **Finding**: Verifying continuous monitoring requires mathematical proof that every tracked target has an active check within 1.5× its schedule interval, with outcomes classified and logged.
 - **Decision**: Implemented `scripts/verify_scheduled_flow.py` inspecting all 24 non-test pages in database. Supported `--trigger-due` to execute due monitor runs and drain events through the processing pipeline. Verified 24/24 pages are on cadence (0 flagged) with next checks scheduled in 115–358 minutes. Committed the live verification table to `TINYFISH_NOTES.md`.
 
-### Decision 24: Secret Scan, Repository Restructure, Flagship Documentation & GitHub Launch (Prompt 07)
+### Decision 23: Secret Scan, Repository Restructure, Flagship Documentation & GitHub Launch (Prompt 07)
 - **Finding**: Preparing the monorepo for public submission and judge evaluation required:
   1. Splitting `/health` to eliminate exposure of wallet balances and financial telemetry, reserving those to authenticated `/admin/health` (`X-Admin-Token`).
   2. Running exhaustive secret scanning on the entire commit history (`git log -p`) to guarantee zero exposed API keys or private credentials before publishing.
@@ -108,10 +108,25 @@
 - **Decision**: Implemented `scripts/scan_secrets.py` and configured `.gitleaks.toml`. Reorganized repository layout and verified all 55 offline unit and integration tests remain 100% green. Authored root `README.md`, `apps/timemachine/README.md`, `docs/ARCHITECTURE.md`, `docs/TINYFISH_USAGE.md`, `docs/API_TIMEMACHINE.md`, and `docs/OPERATIONS.md`. Configured GitHub Actions CI workflow (`.github/workflows/ci.yml`). Renamed master branch to `main`, pushed to `https://github.com/pritpatel2412/tinyfish-bounties.git`, and tagged release `v0.1.0-timemachine`.
 
 
-### Decision 25: Diagnosis of Scheduled Monitoring Flow & Missing Webhooks (Prompt 10 Part A)
+### Decision 24: Diagnosis of Scheduled Monitoring Flow & Missing Webhooks (Prompt 10 Part A)
 - **Finding**: Running `scripts/diagnose_scheduled_flow.py` against live TinyFish and Supabase endpoints revealed:
   1. 24 of 28 TinyFish monitors had an `<EMPTY>` `webhook_url`, and 4 pointed to a development `smee.io` relay.
   2. The `monitor_events` table did not exist in Supabase (`HTTP 404`).
   3. The Supabase Edge Function `tf-webhook` was not deployed (`HTTP 404`).
   4. While ~114 scheduled runs were expected and billed on TinyFish cloud (~$1.24 wallet reduction across ~247 operations), zero events were received on the server because the webhook destination was unreachable or unconfigured.
 - **Decision**: Documented all diagnostic findings. Prepared `infra/supabase/schema.sql` (with `monitor_events` and RLS policies) and updated `infra/supabase/functions/tf-webhook/index.ts` with asynchronous Render wake notification. Halted mutations until user completes mandatory Supabase and Render dashboard setup.
+
+
+### Decision 25: Delivery Fix, Natural-Delivery Proof & Data Integrity Hardening (Prompt 10 Parts B & C)
+- **Finding**:
+  1. `PATCH /v1/monitors/{id}` rejects `webhook_url` (400 Bad Request). Changing webhook destinations requires recreating monitors.
+  2. Natural scheduled delivery needed concrete end-to-end proof without manual `/runs` intervention.
+  3. Provenance of checks required strict tracking (`baseline|scheduled|manual`) to prevent self-fulfilling cadence claims.
+  4. Flapping and capture variance required a 3-observation confirmation gate before promoting changes to new versions.
+  5. All screenshots needed public HTTPS URLs on Supabase Storage bucket `shots` rather than ephemeral local disk paths.
+- **Decision**:
+  1. **Delivery Fix (Part B)**: Migrated all 28 monitors to Supabase Edge Function `tf-webhook` with `WEBHOOK_SECRET`. Proved natural scheduled delivery via `scripts/run_b3_natural_proof.py` at `2026-11-04T16:00:05.780265 UTC` on cron `*/5 * * * *` without calling `/runs`.
+  2. **Trigger Provenance (C1 & C2)**: Added `checks.trigger` (`baseline|scheduled|manual`). Backfilled 24 manual checks from 11:01–11:05 UTC and 29 baseline checks across SQLite and Supabase. Exposed public clock metrics on `/health` and `/logs`.
+  3. **Confirmation Gate & Materiality (C3 & C4)**: Implemented `confirm_change` (2 immediate fetches >=90s apart requiring >=2 of 3 observations to agree). Enforced daily 1,000 fetch budget in `CostLedger`. Python computes deterministic materiality and `suspect_capture_variance`; Groq fallback chain (`GROQ_MODELS`) handles `{type, summary}` without defaulting to "price".
+  4. **Human Review Gate (C5 & C6)**: Added `changes.review_status` (`unreviewed|real|artifact`) and `POST /admin/changes/{id}/review` (X-Admin-Token). Default `/changes` displays verified real changes only. Compiled full review pack for existing manual changes in `docs/REVIEW_2026-11-04.md`.
+  5. **Screenshots Hardening (C7)**: Captured missing baseline screenshots for `status.groq.com`, `vercel.com/changelog`, `vercel.com/legal/terms`, and `openai.com/policies/terms-of-use`. Uploaded all 47 screenshots to Supabase Storage bucket `shots`, rewritten URLs to public HTTPS, and verified anonymous downloads return HTTP 200 `image/jpeg`. Enforced production rejection of non-https screenshot URLs.

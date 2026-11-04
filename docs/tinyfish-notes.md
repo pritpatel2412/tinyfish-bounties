@@ -338,120 +338,41 @@ When a scheduled check detects a change (or finishes a run), TinyFish POSTs to `
 
 ---
 
-## 7. Stage 0 Live Verification Findings
+## 7. Operational Stage Findings & Storage Architecture
 
 - **Agent Cost Accounting**:
   - Live agent executions return `num_of_steps` in the JSON response payload.
   - Cost is calculated as `num_of_steps × $0.016 USD` and logged to both `CostLedger` (SQLite) and `data/tf_calls.jsonl`.
-  - Added unit test in `tests/test_agent_cost.py` verifying full aggregation in `/endpoint-usage`.
+  - Enforces daily spend limit ($2.50) and daily fetch budget cap (1,000 fetches/day).
 
-- **Live `type: fetch` Monitor Run Payload**:
-  - Verified with live runs (`POST /v1/monitors/{id}/runs` and scheduled monitor):
-  - The run payload structure contains:
-    - `id`: unique run ID (UUID).
-    - `is_baseline`: boolean flag (`true` on initial creation, `false` on subsequent runs).
-    - `results`: array of page results where `results[0].text` contains the complete rendered Markdown content.
-    - `results[0].latency_ms`: page fetch latency.
-  - Saved live payload fixture to `tests/fixtures/webhook_fetch_run.json`.
-  - Content is consumed directly from `results[0].text`, completely eliminating extra GET or fetch calls during change processing.
-
-- **Storage Architecture**:
+- **Storage & Screenshot Hardening**:
   - `store.py` provides `SqliteStore` and `SupabaseStore` through `get_store()`.
-  - `ScreenshotStore` targets Supabase Storage bucket `shots` (with local `/data/shots` fallback).
-  - Migration schema defined in `infra/supabase/timemachine.sql`.
+  - All screenshots are archived in Supabase Storage public bucket `shots` with public HTTPS URLs.
+  - Production assertion rejects non-HTTPS screenshot URLs when `ENV=production`.
+  - Schema defined in `infra/supabase/timemachine.sql` with RLS policies and `monitor_events` receiver table.
 
 ---
 
-## 8. Time Machine Live Deployment & Seeding Metrics (2026-11-04)
+## 8. Fleet Metrics, Provenance Audit & Scheduled Delivery Proof (2026-11-04)
 
-- **Live Monitors on Account**: 34 active monitors (cap: 50).
-- **Tracked Pages Seeded**: 25 pages across 6 categories:
-  - 12 AI developer tools (Groq, Gemini, OpenAI, Replit, Supabase, Render, Cursor, Copilot, HuggingFace, Netlify, Resend)
-  - 4 Changelogs & Release Notes (Vercel changelog, Anthropic release notes, Groq status, OpenAI status)
-  - 4 Legal & Terms (OpenAI ToU, Google Privacy, GitHub Terms, Vercel Terms)
-  - 3 Visas & Immigration (UK Student Visa, UK Skilled Worker Visa, USCIS Alerts)
-  - 1 SaaS Pricing (Acme Cloud Platform Pricing live test page)
-  - 1 Fintech Billing (Stripe Pricing)
-- **Monitoring Checks in 24h**: 26 total checks logged in database:
-  - 25 Baselines
-  - 1 Real Material Change detected and classified
-- **Wallet Balance**: **$36.36 USD** ($0.054 daily spend, $2.446 headroom under $2.50 daily ceiling).
-- **Screenshots Captured**: 32 screenshots captured via Browser CDP API (`POST https://api.browser.tinyfish.ai` + Playwright) stored in `data/shots/`.
-- **Judge Samples**: Generated and saved in `samples/timemachine/`:
-  - `pages.json` (all tracked pages metadata and version counts)
-  - `timeline.json` (descending chronological version history)
-  - `asof_before.json` (point-in-time state before price increase: $29/mo)
-  - `asof_after.json` (point-in-time state after price increase: $49/mo)
-  - `diff_1_to_2.json` (structured diff with numeric delta: $29 -> $49/mo)
-  - `changes.json` (global change feed with materiality: 0.9)
-  - `logs.json` (public audit log of monitoring checks)
-  - `export.json` (complete 2MB database dump for judges)
-
-
----
-
-## 7. Stage 0 Live Verification Findings
-
-- **Agent Cost Accounting**:
-  - Live agent executions return `num_of_steps` in the JSON response payload.
-  - Cost is calculated as `num_of_steps × $0.016 USD` and logged to both `CostLedger` (SQLite) and `data/tf_calls.jsonl`.
-  - Added unit test in `tests/test_agent_cost.py` verifying full aggregation in `/endpoint-usage`.
-
-- **Live `type: fetch` Monitor Run Payload**:
-  - Verified with live runs (`POST /v1/monitors/{id}/runs` and scheduled monitor):
-  - The run payload structure contains:
-    - `id`: unique run ID (UUID).
-    - `is_baseline`: boolean flag (`true` on initial creation, `false` on subsequent runs).
-    - `results`: array of page results where `results[0].text` contains the complete rendered Markdown content.
-    - `results[0].latency_ms`: page fetch latency.
-  - Saved live payload fixture to `tests/fixtures/webhook_fetch_run.json`.
-  - Content is consumed directly from `results[0].text`, completely eliminating extra GET or fetch calls during change processing.
-
-- **Storage Architecture**:
-  - `store.py` provides `SqliteStore` and `SupabaseStore` through `get_store()`.
-  - `ScreenshotStore` targets Supabase Storage bucket `shots` (with local `/data/shots` fallback).
-  - Migration schema defined in `infra/supabase/timemachine.sql`.
-
-
----
-
-## 8. Scheduled Flow Cadence Verification (Step 6)
-
-`scripts/verify_scheduled_flow.py` executed live verification against all 24 non-test pages on 2026-11-04:
-
-```text
-Loaded 24 tracked non-test pages from database.
-Verification Timestamp: 2026-11-04T11:07:13.665521+00:00
-
-=============================================================================================================================
-Page URL / Title                           | Int   | Last Scheduled Check At     | Outcome    | Mins to Next / Overdue | Status
------------------------------------------------------------------------------------------------------------------------------
-Rate Limits - GroqDocs                     | 2h    | 2026-11-04T11:01:53.306833+00:00 | unchanged  | In 114.7 min           | [OK]
-Rate limits | Gemini API | Google...       | 2h    | 2026-11-04T11:03:04.583969+00:00 | unchanged  | In 115.8 min           | [OK]
-Business Pricing                           | 6h    | 2026-11-04T11:03:17.834557+00:00 | changed    | In 356.1 min           | [OK]
-Pricing and Plans                          | 6h    | 2026-11-04T11:03:20.771715+00:00 | unchanged  | In 356.1 min           | [OK]
-Pricing & Fees | Supabase                  | 6h    | 2026-11-04T11:03:26.017945+00:00 | unchanged  | In 356.2 min           | [OK]
-Pricing                                    | 6h    | 2026-11-04T11:03:30.253350+00:00 | changed    | In 356.3 min           | [OK]
-Cursor - Pricing                           | 6h    | 2026-11-04T11:03:34.053928+00:00 | unchanged  | In 356.3 min           | [OK]
-GitHub Copilot - Plans & pricing           | 6h    | 2026-11-04T11:03:39.104005+00:00 | unchanged  | In 356.4 min           | [OK]
-Pricing - Hugging Face                     | 6h    | 2026-11-04T11:03:43.001200+00:00 | unchanged  | In 356.5 min           | [OK]
-Pricing and Plans | Netlify                | 6h    | 2026-11-04T11:03:46.536226+00:00 | unchanged  | In 356.5 min           | [OK]
-Pricing & Fees (Stripe)                    | 6h    | 2026-11-04T11:03:51.428530+00:00 | changed    | In 356.6 min           | [OK]
-Pricing - Resend                           | 6h    | 2026-11-04T11:03:57.337985+00:00 | unchanged  | In 356.7 min           | [OK]
-Terms of Use (OpenAI)                      | 6h    | 2026-11-04T11:04:03.903847+00:00 | unchanged  | In 356.8 min           | [OK]
-Privacy Policy - Google                    | 6h    | 2026-11-04T11:04:12.666991+00:00 | unchanged  | In 357.0 min           | [OK]
-GitHub Terms of Service                    | 6h    | 2026-11-04T11:04:16.419277+00:00 | unchanged  | In 357.0 min           | [OK]
-Terms of Service (Vercel)                  | 6h    | 2026-11-04T11:04:21.887906+00:00 | unchanged  | In 357.1 min           | [OK]
-Student visa (Gov.uk)                      | 6h    | 2026-11-04T11:04:26.170147+00:00 | unchanged  | In 357.2 min           | [OK]
-Skilled Worker visa (Gov.uk)               | 6h    | 2026-11-04T11:04:30.453355+00:00 | unchanged  | In 357.3 min           | [OK]
-Changelog - Vercel                         | 2h    | 2026-11-04T11:04:35.115957+00:00 | changed    | In 117.4 min           | [OK]
-Claude Platform release notes              | 2h    | 2026-11-04T11:04:42.320737+00:00 | unchanged  | In 117.5 min           | [OK]
-USCIS Alerts                               | 2h    | 2026-11-04T11:04:45.666340+00:00 | unchanged  | In 117.5 min           | [OK]
-OpenAI Status                              | 2h    | 2026-11-04T11:04:51.104033+00:00 | unchanged  | In 117.6 min           | [OK]
-Groq Status                                | 2h    | 2026-11-04T11:04:55.361612+00:00 | unchanged  | In 117.7 min           | [OK]
-GitHub Copilot licenses                    | 2h    | 2026-11-04T11:05:00.906410+00:00 | unchanged  | In 117.8 min           | [OK]
-=============================================================================================================================
-
-Summary: 24 total pages | 24 on cadence | 0 flagged
-[OK] All pages are verified within scheduled monitoring cadence. Zero drift detected.
-```
+- **Live Tracked Pages**: Exactly **28 production pages** across 6 categories (AI developer tools, changelogs, legal/terms, visa policies, fintech pricing). (Plus 1 isolated Acme test page flagged `is_test=1, active=0`).
+- **Active TinyFish Monitors**: Exactly **28 monitors active** in TinyFish cloud (`GET /v1/monitors`), matching tracked pages 1:1.
+- **Webhook Delivery Infrastructure**: All 28 monitors point to Supabase Edge Function `tf-webhook` (`https://xlljoenoqktpwqfvpidh.supabase.co/functions/v1/tf-webhook?secret=...`).
+- **Provenance Audit (C1)**:
+  - Total checks recorded: 54 checks.
+  - 29 Baseline checks (`trigger = 'baseline'`).
+  - 25 Manual checks (`trigger = 'manual'`), including the 24 checks from the 2026-11-04 11:01–11:05 UTC round triggered via `--trigger-due` (`POST /v1/monitors/{id}/runs`).
+  - Strict audit rule: Manual checks are never presented as proof of autonomous cron scheduling.
+- **Natural Scheduled Delivery Proof (Part B3)**:
+  - Created temporary monitor on `https://httpbin.org/html` with cron `*/5 * * * *` and real Supabase webhook.
+  - Monitored passively without calling `/runs`.
+  - At exactly `2026-11-04T16:00:05.780265 UTC`, TinyFish cloud naturally triggered the scheduled execution.
+  - Edge Function received the webhook, inserted event `0c7a0daa-ac89-4224-9c3e-9a8bda5295b7` with run ID `f4d6a812-2400-48db-8f27-262e091725fa`.
+  - Background processor drained the queue, recorded check with `trigger = 'scheduled'`, and cleanly tore down the probe monitor.
+- **Public Clock Metrics (C2)**:
+  - Operational `/health` and `/logs` endpoints compute public clock strictly from `trigger = 'scheduled'`.
+- **Confirmation & Review Gates (C3-C6)**:
+  - Python-owned 3-observation confirmation gate requires $\ge 2$ of 3 observations (separated by $\ge 90$s) to agree before version promotion.
+  - Deterministic materiality scores (`numeric_delta -> 0.85`, capture variance cap at 0.3).
+  - Groq model fallback chain (`qwen/qwen3.8-27b`, `openai/gpt-oss-120b`, `openai/gpt-oss-20b`); never defaults to "price".
+  - Human review gate (`changes.review_status`) with `/admin/changes/{id}/review` and full audit pack at `docs/REVIEW_2026-11-04.md`.

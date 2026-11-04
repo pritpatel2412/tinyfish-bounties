@@ -159,13 +159,28 @@ class CostLedger:
             conn.close()
 
     @classmethod
-    def check_budget(cls, estimated_cost: float):
+    def get_daily_fetch_count(cls, date_str: str | None = None) -> int:
+        if not date_str:
+            date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        conn = _get_db()
+        try:
+            cur = conn.execute("SELECT COUNT(*) FROM cost_ledger WHERE date_str = ? AND endpoint = 'fetch'", (date_str,))
+            return int(cur.fetchone()[0] or 0)
+        finally:
+            conn.close()
+
+    @classmethod
+    def check_budget(cls, estimated_cost: float, endpoint: str = ""):
         max_daily = cls.get_max_daily()
         current_daily = cls.get_daily_spend()
         if current_daily + estimated_cost > max_daily:
             raise BudgetExceeded(
                 f"Daily spend limit exceeded: current ${current_daily:.4f} + ${estimated_cost:.4f} > limit ${max_daily:.2f}"
             )
+        if endpoint == "fetch":
+            fetches = cls.get_daily_fetch_count()
+            if fetches >= 1000:
+                raise BudgetExceeded(f"Daily TinyFish fetch limit reached: {fetches}/1000 fetches today.")
 
     @classmethod
     def record_call(cls, endpoint: str, cost: float, details: str = ""):
