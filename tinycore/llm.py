@@ -8,13 +8,14 @@ Groq LLM helper enforcing:
 - GROQ_MODELS fallback chain; never default to "price" on failure; Python computes materiality deterministically.
 """
 
-import os
-import json
-import time
 import hashlib
+import json
 import logging
-from groq import Groq, RateLimitError, NotFoundError
+import os
+import time
+
 from dotenv import dotenv_values
+from groq import Groq, NotFoundError, RateLimitError
 
 logger = logging.getLogger("tinycore.llm")
 

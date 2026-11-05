@@ -7,15 +7,14 @@ Hourly in-process watchdog for Time Machine operations:
 - Runs continuously in background every hour or on-demand
 """
 
-import os
-import time
 import logging
 import threading
 from datetime import datetime, timezone
+
 from dotenv import dotenv_values
 
-from tinycore.tf_client import TF
 from tinycore.store import get_store
+from tinycore.tf_client import TF
 
 logger = logging.getLogger("timemachine.watchdog")
 

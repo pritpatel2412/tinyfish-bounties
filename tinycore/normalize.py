@@ -4,9 +4,10 @@ Cleans HTML, strips transient noise (dates, timestamps, tracking parameters, ban
 and segments text into structured content Blocks with normalized hashes.
 """
 
-import re
 import hashlib
+import re
 from dataclasses import dataclass
+
 from bs4 import BeautifulSoup, Comment
 
 # Regex patterns for transient noise
@@ -112,7 +113,7 @@ def to_blocks(text: str) -> list[Block]:
     """Segments markdown or formatted text into structured Blocks by heading path."""
     blocks: list[Block] = []
     lines = text.splitlines()
-    
+
     current_headings = []
     current_block_lines = []
 
@@ -139,7 +140,7 @@ def to_blocks(text: str) -> list[Block]:
             flush_block()
             level = len(m.group(1))
             heading_text = m.group(2).strip()
-            
+
             # Adjust heading hierarchy
             while len(current_headings) >= level:
                 current_headings.pop()

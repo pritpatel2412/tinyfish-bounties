@@ -76,7 +76,7 @@ class MonitorBudget:
     def allocate(app: str, count: int = 1) -> int:
         if app not in APP_QUOTAS:
             raise ValueError(f"Unknown app '{app}'. Supported: {list(APP_QUOTAS.keys())}")
-        
+
         conn = _get_db()
         try:
             with conn:
@@ -84,14 +84,14 @@ class MonitorBudget:
                 total_active = cur.fetchone()[0] or 0
                 if total_active + count > GLOBAL_MONITOR_CAP:
                     raise QuotaExceeded(f"Global monitor cap ({GLOBAL_MONITOR_CAP}) exceeded. Total active: {total_active}, requested: {count}")
-                
+
                 cur = conn.execute("SELECT active_count FROM monitor_allocations WHERE app = ?", (app,))
                 row = cur.fetchone()
                 current_app_count = row["active_count"] if row else 0
                 quota = APP_QUOTAS[app]
                 if current_app_count + count > quota:
                     raise QuotaExceeded(f"App '{app}' quota ({quota}) exceeded. Currently active: {current_app_count}, requested: {count}")
-                
+
                 new_count = current_app_count + count
                 conn.execute("UPDATE monitor_allocations SET active_count = ? WHERE app = ?", (new_count, app))
                 return new_count

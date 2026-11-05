@@ -7,9 +7,10 @@ Computes structured diffs between Block lists:
 - Returns Diff with is_empty=True if all changes were transient noise
 """
 
-import re
 import difflib
+import re
 from dataclasses import dataclass, field
+
 from tinycore.normalize import Block
 
 CURRENCY_UNITS = [r"\$", r"₹", r"€", r"£", r"¥"]
@@ -84,7 +85,7 @@ def compute_numeric_deltas(before_text: str, after_text: str) -> list[dict]:
     nums_before = extract_numbers_with_units(before_text)
     nums_after = extract_numbers_with_units(after_text)
     deltas = []
-    
+
     # Match by unit or order
     for (v_old, u_old), (v_new, u_new) in zip(nums_before, nums_after):
         if v_old != v_new:

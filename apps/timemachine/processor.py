@@ -10,21 +10,22 @@ Event processor for Time Machine:
 - Runs in a continuous loop every 60s and on on-demand triggers (/internal/wake)
 """
 
-import os
-import uuid
 import json
-import time
 import logging
+import os
 import threading
+import time
+import uuid
 from collections import Counter
 from datetime import datetime, timezone
+
 from dotenv import dotenv_values
 
-from tinycore.tf_client import TF
-from tinycore.normalize import markdown_to_blocks, compute_norm_hash, Block
 from tinycore.differ import diff_blocks
-from tinycore.store import get_store, ScreenshotStore
 from tinycore.llm import classify_change
+from tinycore.normalize import Block, compute_norm_hash, markdown_to_blocks
+from tinycore.store import ScreenshotStore, get_store
+from tinycore.tf_client import TF
 
 logger = logging.getLogger("timemachine.processor")
 

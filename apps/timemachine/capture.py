@@ -8,16 +8,17 @@ Handles adding and capturing baseline snapshots for pages in Time Machine:
 - Logs baseline check outcome
 """
 
+import logging
 import os
 import uuid
-import logging
 from datetime import datetime, timezone
+
 from dotenv import dotenv_values
 
-from tinycore.tf_client import TF, TFError
 from tinycore.ledger import QuotaExceeded
-from tinycore.normalize import markdown_to_blocks, compute_norm_hash
-from tinycore.store import get_store, ScreenshotStore
+from tinycore.normalize import compute_norm_hash, markdown_to_blocks
+from tinycore.store import ScreenshotStore, get_store
+from tinycore.tf_client import TF, TFError
 
 logger = logging.getLogger("timemachine.capture")
 

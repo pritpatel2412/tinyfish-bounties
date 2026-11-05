@@ -8,17 +8,18 @@ Official TinyFish client wrapper enforcing all architectural rules:
 - Integrates with CostLedger and MonitorBudget
 """
 
-import os
-import json
-import time
 import asyncio
-from datetime import datetime, timezone
+import json
+import os
+import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import NamedTuple
+
 import httpx
 from playwright.async_api import async_playwright
 
-from tinycore.ledger import CostLedger, MonitorBudget, RATES, BudgetExceeded, QuotaExceeded
+from tinycore.ledger import RATES, CostLedger, MonitorBudget
 
 CALLS_LOG = os.path.join("data", "tf_calls.jsonl")
 FETCH_BASE_URL = "https://api.fetch.tinyfish.ai"
@@ -116,7 +117,7 @@ class TF:
                 self.api_key = dotenv_values(env_path).get("TINYFISH_API_KEY")
         if not self.api_key:
             raise ValueError("TINYFISH_API_KEY not configured in environment or .env")
-        
+
         self.headers = {
             "X-API-Key": self.api_key,
             "Content-Type": "application/json"

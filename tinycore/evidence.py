@@ -7,8 +7,9 @@ Enforces Hard Rule 6 across all apps.
 
 import hashlib
 import uuid
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+
 from tinycore.store import get_db
 
 

@@ -10,7 +10,8 @@ Deterministic logic:
 import re
 import unicodedata
 from dataclasses import dataclass
-from rapidfuzz import fuzz, distance
+
+from rapidfuzz import distance, fuzz
 
 HONORIFICS = [
     r"\bdr\.?\b", r"\bmr\.?\b", r"\bmrs\.?\b", r"\bms\.?\b",
@@ -36,7 +37,7 @@ def normalize_name(s: str) -> str:
     # NFKD and remove diacritics
     nfkd = unicodedata.normalize("NFKD", s)
     no_diacritics = "".join([c for c in nfkd if not unicodedata.combining(c)])
-    
+
     # Casefold
     clean = no_diacritics.casefold()
 

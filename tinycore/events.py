@@ -5,9 +5,9 @@ Enforces idempotent event processing across Time Machine, TinyVerify, and Site2M
 """
 
 import os
-import httpx
-from datetime import datetime, timezone
 from dataclasses import dataclass
+
+import httpx
 from dotenv import dotenv_values
 
 PROCESSED_RUN_CACHE = set()

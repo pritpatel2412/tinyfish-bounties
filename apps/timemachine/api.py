@@ -5,22 +5,21 @@ Provides complete history, as-of point-in-time reconstruction, structured diffs,
 audit logs, webhook ingestion, and live export for judges.
 """
 
+import json
+import logging
 import os
 import re
-import json
-import time
-import uuid
 import secrets
-import logging
+import time
 import urllib.parse
-from collections import defaultdict, Counter
+import uuid
+from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any
 
-from fastapi import FastAPI, Request, Query, HTTPException, status
+from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, HttpUrl, field_validator
+from pydantic import BaseModel, field_validator
 
 
 class ScreenshotValidator(BaseModel):
@@ -34,18 +33,14 @@ class ScreenshotValidator(BaseModel):
                 raise ValueError(f"In production, screenshot_url must be an https URL, got: {v}")
         return v
 
-from tinycore.api_common import create_app
-from tinycore.store import get_store
-from tinycore.normalize import Block
-from tinycore.differ import diff_blocks
-from tinycore.tf_client import TF
 from apps.timemachine.capture import add_page
-from apps.timemachine.processor import (
-    processor_worker,
-    insert_incoming_event,
-    get_unprocessed_events
-)
+from apps.timemachine.processor import get_unprocessed_events, insert_incoming_event, processor_worker
 from apps.timemachine.watchdog import watchdog_worker
+from tinycore.api_common import create_app
+from tinycore.differ import diff_blocks
+from tinycore.normalize import Block
+from tinycore.store import get_store
+from tinycore.tf_client import TF
 
 logger = logging.getLogger("timemachine.api")
 

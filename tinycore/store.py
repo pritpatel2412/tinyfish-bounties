@@ -5,12 +5,12 @@ Selected via STORE_BACKEND environment variable ('sqlite' or 'supabase').
 Also provides ScreenshotStore managing uploads to Supabase Storage bucket 'shots' (with local fallback).
 """
 
-import os
 import json
-import uuid
+import os
 import sqlite3
+import uuid
 from datetime import datetime, timezone
-from typing import Any
+
 import httpx
 from dotenv import dotenv_values
 
@@ -186,7 +186,8 @@ class SqliteStore:
             if not row:
                 return None
             d = dict(row)
-            d["active"] = bool(d["active"]); d["is_test"] = bool(d.get("is_test", 0))
+            d["active"] = bool(d["active"])
+            d["is_test"] = bool(d.get("is_test", 0))
             try:
                 d["ignore_selectors"] = json.loads(d["ignore_selectors"] or "[]")
             except Exception:
@@ -203,7 +204,8 @@ class SqliteStore:
             if not row:
                 return None
             d = dict(row)
-            d["active"] = bool(d["active"]); d["is_test"] = bool(d.get("is_test", 0))
+            d["active"] = bool(d["active"])
+            d["is_test"] = bool(d.get("is_test", 0))
             try:
                 d["ignore_selectors"] = json.loads(d["ignore_selectors"] or "[]")
             except Exception:
@@ -224,7 +226,8 @@ class SqliteStore:
             results = []
             for row in cur.fetchall():
                 d = dict(row)
-                d["active"] = bool(d["active"]); d["is_test"] = bool(d.get("is_test", 0))
+                d["active"] = bool(d["active"])
+                d["is_test"] = bool(d.get("is_test", 0))
                 try:
                     d["ignore_selectors"] = json.loads(d["ignore_selectors"] or "[]")
                 except Exception:
