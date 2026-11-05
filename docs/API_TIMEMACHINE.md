@@ -74,6 +74,39 @@ curl -X GET "https://tinyfish-bounties.onrender.com/health"
 
 ---
 
+### 1b. Public Operational Stats
+`GET /stats`
+
+Returns aggregated operational metrics for public Time Machine UI dashboards. Excludes test/verification pages.
+
+#### Request
+```bash
+curl -X GET "https://tinyfish-bounties.onrender.com/stats"
+```
+
+#### Response (200 OK)
+```json
+{
+  "pages_tracked": 28,
+  "scheduled_checks_total": 1,
+  "manual_checks_total": 25,
+  "first_scheduled_check_at": "2026-11-04T16:00:05.780265Z",
+  "days_of_scheduled_history": 0.08,
+  "confirmed_changes": 0,
+  "unreviewed_changes": 4,
+  "outcome_counts": {
+    "baseline": 29,
+    "unchanged": 20,
+    "noise": 0,
+    "unconfirmed": 1,
+    "changed": 4,
+    "error": 0
+  }
+}
+```
+
+---
+
 ### 2. Admin Health & Telemetry
 `GET /admin/health`
 

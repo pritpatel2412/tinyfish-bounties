@@ -130,3 +130,14 @@
   3. **Confirmation Gate & Materiality (C3 & C4)**: Implemented `confirm_change` (2 immediate fetches >=90s apart requiring >=2 of 3 observations to agree). Enforced daily 1,000 fetch budget in `CostLedger`. Python computes deterministic materiality and `suspect_capture_variance`; Groq fallback chain (`GROQ_MODELS`) handles `{type, summary}` without defaulting to "price".
   4. **Human Review Gate (C5 & C6)**: Added `changes.review_status` (`unreviewed|real|artifact`) and `POST /admin/changes/{id}/review` (X-Admin-Token). Default `/changes` displays verified real changes only. Compiled full review pack for existing manual changes in `docs/REVIEW_2026-11-04.md`.
   5. **Screenshots Hardening (C7)**: Captured missing baseline screenshots for `status.groq.com`, `vercel.com/changelog`, `vercel.com/legal/terms`, and `openai.com/policies/terms-of-use`. Uploaded all 47 screenshots to Supabase Storage bucket `shots`, rewritten URLs to public HTTPS, and verified anonymous downloads return HTTP 200 `image/jpeg`. Enforced production rejection of non-https screenshot URLs.
+
+
+### Decision 26: Backend Prerequisites & Contract Alignment for Base44 UI (Prompt 11)
+- **Finding**: Connecting the production Base44 UI required:
+  1. `GET /stats`: Unified operational metrics (`pages_tracked`, `scheduled_checks_total`, `manual_checks_total`, `first_scheduled_check_at`, `days_of_scheduled_history`, `confirmed_changes`, `unreviewed_changes`, `outcome_counts:{baseline,unchanged,noise,unconfirmed,changed,error}`) strictly excluding test pages.
+  2. `/pages`: Comprehensive metadata contract (`id, url, title, category, versions_count, last_checked_at, status, history_starts_at, interval_label`).
+  3. `/changes`: Parameter filtering (`category, min_materiality, include=all|real`), diff stats (`+a -r ~c`), and strictly https screenshot URLs.
+  4. `/logs`: Explicit trigger provenance (`baseline|scheduled|manual`).
+  5. Route-aware CORS: Permitting any client origin (including Base44 app domains) for all GET endpoints, while permitting POST + OPTIONS exclusively on `/suggest`.
+  6. `/suggest`: Sliding-window rate limiter (5/hr/IP), strict HTTP(S) URL validation, saving nominations to `suggestions` table without monitor creation.
+- **Decision**: Added `GET /stats` endpoint, aligned `/pages` schema with `versions_count`, upgraded `PageSuggestRequest` to accept `note` with 5/hr rate limiting, implemented route-aware CORS middleware, and added `suggestions` table in SQLite/Supabase. Verified 100% test pass (62 tests).

@@ -340,10 +340,140 @@ def test_webhook_and_wake_secrets(client, monkeypatch):
 
 
 def test_suggest_page(client, tmp_path, monkeypatch):
+    from apps.timemachine.api import _suggest_rate_limits
+    _suggest_rate_limits.clear()
+
+    # 1. Valid suggestion with note
     resp = client.post("/suggest", json={
         "url": "https://stripe.com/pricing",
         "title": "Stripe Pricing",
-        "reason": "Crucial payment fee updates"
+        "note": "Crucial payment fee updates"
     })
     assert resp.status_code == 202
-    assert resp.json()["status"] == "queued"
+    data = resp.json()
+    assert data["status"] == "queued"
+    assert "Suggestions are reviewed before anything is tracked" in data["message"]
+    assert data["suggestion"]["url"] == "https://stripe.com/pricing"
+    assert data["suggestion"]["note"] == "Crucial payment fee updates"
+
+    # 2. Invalid URL -> 400 INVALID_URL
+    resp_bad = client.post("/suggest", json={"url": "not-a-url"})
+    assert resp_bad.status_code == 400
+    assert resp_bad.json()["error"]["code"] == "INVALID_URL"
+
+    resp_bad_scheme = client.post("/suggest", json={"url": "ftp://example.com/pricing"})
+    assert resp_bad_scheme.status_code == 400
+    assert resp_bad_scheme.json()["error"]["code"] == "INVALID_URL"
+
+    # 3. Rate limiting (max 5 per hour per IP)
+    # 4 more calls -> hits 5 total
+    for i in range(4):
+        r = client.post("/suggest", json={"url": f"https://example{i}.com"})
+        assert r.status_code == 202
+
+    # 6th call from same IP -> 429 RATE_LIMITED
+    resp_limited = client.post("/suggest", json={"url": "https://toomany.com"})
+    assert resp_limited.status_code == 429
+    assert resp_limited.json()["error"]["code"] == "RATE_LIMITED"
+
+
+def test_stats_endpoint(client, seeded_page, test_db_store):
+    # Add a scheduled check and a manual check to seeded_page
+    test_db_store.add_check({
+        "page_id": seeded_page["id"],
+        "observed_at": "2026-11-04T12:00:00Z",
+        "run_id": "run_stat_sched",
+        "outcome": "unchanged",
+        "trigger": "scheduled"
+    })
+    test_db_store.add_check({
+        "page_id": seeded_page["id"],
+        "observed_at": "2026-11-04T14:00:00Z",
+        "run_id": "run_stat_man",
+        "outcome": "unchanged",
+        "trigger": "manual"
+    })
+
+    # Add a test page with checks to verify test pages are excluded
+    test_p = test_db_store.add_page({
+        "url": "https://internal.test/pricing",
+        "title": "Internal Test Page",
+        "category": "test",
+        "is_test": 1
+    })
+    test_db_store.add_check({
+        "page_id": test_p["id"],
+        "observed_at": "2026-11-04T15:00:00Z",
+        "run_id": "run_stat_test",
+        "outcome": "changed",
+        "trigger": "scheduled"
+    })
+
+    resp = client.get("/stats")
+    assert resp.status_code == 200
+    stats = resp.json()
+
+    # Core keys
+    assert "pages_tracked" in stats
+    assert stats["pages_tracked"] == 1  # excludes test page
+    assert stats["scheduled_checks_total"] >= 1
+    assert stats["manual_checks_total"] >= 1
+    assert stats["first_scheduled_check_at"] is not None
+    assert "days_of_scheduled_history" in stats
+    assert "confirmed_changes" in stats
+    assert "unreviewed_changes" in stats
+    assert stats["confirmed_changes"] >= 1  # Version 2 is marked real in seeded_page
+
+    # Outcome counts map
+    oc = stats["outcome_counts"]
+    for expected_key in ("baseline", "unchanged", "noise", "unconfirmed", "changed", "error"):
+        assert expected_key in oc
+        assert isinstance(oc[expected_key], int)
+
+
+def test_pages_contract_fields(client, seeded_page):
+    resp = client.get("/pages")
+    assert resp.status_code == 200
+    pages = resp.json()
+    assert len(pages) >= 1
+    p = pages[0]
+    required_keys = [
+        "id", "url", "title", "category", "versions_count",
+        "last_checked_at", "status", "history_starts_at", "interval_label"
+    ]
+    for k in required_keys:
+        assert k in p, f"Missing required key '{k}' in /pages response"
+    assert p["versions_count"] == 2
+    assert p["status"] in ("active", "paused")
+
+
+def test_cors_preflight_and_methods(client):
+    origin = "https://time-machine.base44.app"
+
+    # 1. GET /pages from Base44 origin -> allowed
+    resp_get = client.get("/pages", headers={"Origin": origin})
+    assert resp_get.status_code == 200
+    assert resp_get.headers.get("access-control-allow-origin") == origin
+    assert "GET" in resp_get.headers.get("access-control-allow-methods", "")
+
+    # 2. OPTIONS /suggest preflight from Base44 origin -> allowed POST, OPTIONS
+    resp_opt_suggest = client.options("/suggest", headers={
+        "Origin": origin,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type"
+    })
+    assert resp_opt_suggest.status_code == 204
+    assert resp_opt_suggest.headers.get("access-control-allow-origin") == origin
+    assert "POST" in resp_opt_suggest.headers.get("access-control-allow-methods", "")
+
+    # 3. OPTIONS /pages preflight with POST from Base44 origin -> GET, OPTIONS only (no POST)
+    resp_opt_pages = client.options("/pages", headers={
+        "Origin": origin,
+        "Access-Control-Request-Method": "POST"
+    })
+    assert resp_opt_pages.status_code == 204
+    assert resp_opt_pages.headers.get("access-control-allow-origin") == origin
+    methods = resp_opt_pages.headers.get("access-control-allow-methods", "")
+    assert "POST" not in methods
+    assert "GET" in methods
+

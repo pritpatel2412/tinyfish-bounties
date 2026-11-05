@@ -130,6 +130,17 @@ def init_db(db_path: str = DB_PATH):
                     processed INTEGER NOT NULL DEFAULT 0
                 );
             """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS suggestions (
+                    id TEXT PRIMARY KEY,
+                    url TEXT NOT NULL,
+                    title TEXT,
+                    note TEXT,
+                    suggested_at TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending_approval'
+                );
+            """)
     finally:
         conn.close()
 
@@ -492,6 +503,37 @@ class SqliteStore:
         finally:
             conn.close()
 
+    def add_suggestion(self, s: dict) -> dict:
+        conn = self._conn()
+        try:
+            sid = s.get("id") or str(uuid.uuid4())
+            s_at = s.get("suggested_at") or datetime.now(timezone.utc).isoformat()
+            with conn:
+                conn.execute("""
+                    INSERT INTO suggestions (id, url, title, note, suggested_at, status)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (sid, s["url"], s.get("title"), s.get("note"), s_at, s.get("status", "pending_approval")))
+            return self.get_suggestion(sid)  # type: ignore
+        finally:
+            conn.close()
+
+    def get_suggestion(self, suggestion_id: str) -> dict | None:
+        conn = self._conn()
+        try:
+            cur = conn.execute("SELECT * FROM suggestions WHERE id = ?", (suggestion_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    def list_suggestions(self, limit: int = 100) -> list[dict]:
+        conn = self._conn()
+        try:
+            cur = conn.execute("SELECT * FROM suggestions ORDER BY suggested_at DESC LIMIT ?", (limit,))
+            return [dict(r) for r in cur.fetchall()]
+        finally:
+            conn.close()
+
 
 class SupabaseStore:
     """Supabase REST Postgres backend for Time Machine."""
@@ -671,6 +713,32 @@ class SupabaseStore:
             for c in arr:
                 c["trigger"] = c.get("trigger") or (c.get("detail") or {}).get("trigger", "scheduled")
             return arr
+        return []
+
+    def add_suggestion(self, s: dict) -> dict:
+        sid = s.get("id") or str(uuid.uuid4())
+        s_at = s.get("suggested_at") or datetime.now(timezone.utc).isoformat()
+        rec = {
+            "id": sid,
+            "url": s["url"],
+            "title": s.get("title"),
+            "note": s.get("note"),
+            "suggested_at": s_at,
+            "status": s.get("status", "pending_approval")
+        }
+        try:
+            return self._post("suggestions", rec)
+        except Exception:
+            return rec
+
+    def list_suggestions(self, limit: int = 100) -> list[dict]:
+        url = f"{self.sb_url}/rest/v1/suggestions?order=suggested_at.desc&limit={limit}"
+        try:
+            resp = self.client.get(url, headers=self.headers)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            pass
         return []
 
 

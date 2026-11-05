@@ -13,7 +13,7 @@ import uuid
 import secrets
 import logging
 import urllib.parse
-from collections import defaultdict
+from collections import defaultdict, Counter
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
@@ -272,6 +272,73 @@ def create_page_endpoint(req: PageCreateRequest, request: Request):
         return json_error("CAPTURE_FAILED", f"Failed to capture page: {e}", status_code=500)
 
 
+@app.get("/stats")
+def get_stats_endpoint():
+    """Returns platform operational stats for public Time Machine UI. Excludes test pages."""
+    store = get_store()
+    all_pages = store.list_pages()
+    non_test_pages = {p["id"]: p for p in all_pages if not p.get("is_test")}
+    pages_tracked = len(non_test_pages)
+
+    all_checks = store.get_checks(limit=2000)
+    non_test_checks = [c for c in all_checks if c.get("page_id") in non_test_pages]
+
+    scheduled_checks = [c for c in non_test_checks if c.get("trigger") == "scheduled"]
+    manual_checks = [c for c in non_test_checks if c.get("trigger") == "manual"]
+    scheduled_checks_total = len(scheduled_checks)
+    manual_checks_total = len(manual_checks)
+
+    first_scheduled_check_at = min((c["observed_at"] for c in scheduled_checks), default=None)
+    days_of_scheduled_history = 0.0
+    if first_scheduled_check_at:
+        try:
+            f_dt = datetime.fromisoformat(first_scheduled_check_at.replace("Z", "+00:00"))
+            days_of_scheduled_history = round((datetime.now(timezone.utc) - f_dt).total_seconds() / 86400.0, 3)
+        except Exception:
+            days_of_scheduled_history = 0.0
+
+    confirmed_changes = 0
+    unreviewed_changes = 0
+    for chk in non_test_checks:
+        if chk.get("outcome") != "changed":
+            continue
+        p_id = chk["page_id"]
+        detail = chk.get("detail", {})
+        review_status = detail.get("review_status")
+        if not review_status:
+            v_no = detail.get("version_no")
+            if v_no is not None:
+                v_obj = store.get_version(p_id, v_no)
+                if v_obj:
+                    review_status = v_obj.get("review_status")
+        review_status = review_status or "unreviewed"
+        if review_status == "real":
+            confirmed_changes += 1
+        elif review_status == "unreviewed":
+            unreviewed_changes += 1
+
+    outcomes = Counter(c.get("outcome") for c in non_test_checks)
+    outcome_counts = {
+        "baseline": outcomes.get("baseline", 0),
+        "unchanged": outcomes.get("unchanged", 0),
+        "noise": outcomes.get("noise", 0),
+        "unconfirmed": outcomes.get("unconfirmed", 0),
+        "changed": outcomes.get("changed", 0),
+        "error": outcomes.get("error", 0)
+    }
+
+    return {
+        "pages_tracked": pages_tracked,
+        "scheduled_checks_total": scheduled_checks_total,
+        "manual_checks_total": manual_checks_total,
+        "first_scheduled_check_at": first_scheduled_check_at,
+        "days_of_scheduled_history": days_of_scheduled_history,
+        "confirmed_changes": confirmed_changes,
+        "unreviewed_changes": unreviewed_changes,
+        "outcome_counts": outcome_counts
+    }
+
+
 @app.get("/pages")
 def list_pages_endpoint(
     category: str | None = Query(None, description="Filter by category"),
@@ -293,7 +360,16 @@ def list_pages_endpoint(
 
         versions = store.get_versions(p["id"], limit=1000)
         p_copy = dict(p)
-        p_copy["version_count"] = len(versions)
+        v_count = len(versions)
+        p_copy["versions_count"] = v_count
+        p_copy["version_count"] = v_count
+        if "status" not in p_copy or not p_copy["status"]:
+            p_copy["status"] = "active" if p.get("active", True) else "paused"
+        if "interval_label" not in p_copy or not p_copy["interval_label"]:
+            cron = str(p.get("schedule_cron", ""))
+            p_copy["interval_label"] = "every 2h" if "*/2" in cron else "every 6h"
+        if "history_starts_at" not in p_copy or not p_copy["history_starts_at"]:
+            p_copy["history_starts_at"] = p.get("added_at")
         result.append(p_copy)
 
     return result
@@ -615,13 +691,14 @@ def list_changes_feed(
         if min_mat_val is not None and materiality < min_mat_val:
             continue
 
+        v_no = detail.get("version_no")
+        v_obj = None
+        if v_no is not None:
+            v_obj = store.get_version(p_id, v_no)
+
         review_status = detail.get("review_status")
-        if not review_status:
-            v_no = detail.get("version_no")
-            if v_no is not None:
-                v_obj = store.get_version(p_id, v_no)
-                if v_obj:
-                    review_status = v_obj.get("review_status")
+        if not review_status and v_obj:
+            review_status = v_obj.get("review_status")
         review_status = review_status or "unreviewed"
         if review_status == "unreviewed":
             unreviewed_count += 1
@@ -629,19 +706,31 @@ def list_changes_feed(
         if include_val != "all" and review_status != "real":
             continue
 
+        raw_shot = detail.get("screenshot_url")
+        if not raw_shot and v_obj:
+            raw_shot = v_obj.get("screenshot_url")
+        validated_shot = raw_shot if (raw_shot and raw_shot.startswith("https://")) else None
+
+        diff_stats = detail.get("stats")
+        if not diff_stats and v_no and v_no > 1:
+            diff_rec = store.get_diff(p_id, v_no - 1, v_no)
+            if diff_rec and isinstance(diff_rec.get("diff"), dict):
+                diff_stats = diff_rec["diff"].get("stats")
+
         changes.append({
             "id": chk["id"],
             "page_id": p_id,
             "url": page["url"],
             "title": page.get("title"),
             "category": page.get("category"),
-            "version_no": detail.get("version_no"),
+            "version_no": v_no,
             "observed_at": obs_at,
             "summary": classification.get("summary") or "Content change detected",
             "classification": classification,
-            "screenshot_url": ScreenshotValidator(screenshot_url=detail.get("screenshot_url")).screenshot_url,
+            "screenshot_url": validated_shot,
             "review_status": review_status,
-            "review_note": detail.get("review_note")
+            "review_note": detail.get("review_note") or (v_obj.get("review_note") if v_obj else None),
+            "diff_stats": diff_stats or {"added": 0, "removed": 0, "changed": 1}
         })
 
     return {
@@ -866,33 +955,70 @@ def edit_testpage(req: TestPageEditRequest, request: Request):
     return {"status": "updated", "state": _test_page_state}
 
 
+_suggest_rate_limits: dict[str, list[float]] = defaultdict(list)
+SUGGEST_RATE_LIMIT_PER_HOUR = 5
+
+
 class PageSuggestRequest(BaseModel):
     url: str
-    title: str | None = None
+    note: str | None = None
     reason: str | None = None
+    title: str | None = None
 
 
 @app.post("/suggest", status_code=status.HTTP_202_ACCEPTED)
-def suggest_page_endpoint(req: PageSuggestRequest):
-    """Queues a user-suggested page for administrator review (no direct monitor creation)."""
-    parsed = urllib.parse.urlparse(req.url)
-    if not parsed.scheme or not parsed.netloc:
-        return json_error("INVALID_URL", "Valid http/https URL required", status_code=400)
+def suggest_page_endpoint(req: PageSuggestRequest, request: Request):
+    """Queues a user-suggested page nomination for review (never creates a monitor). Rate limited: 5/hr/IP."""
+    client_ip = (
+        request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    now = time.time()
+    hour_ago = now - 3600.0
+
+    recent = [t for t in _suggest_rate_limits[client_ip] if t > hour_ago]
+    if len(recent) >= SUGGEST_RATE_LIMIT_PER_HOUR:
+        return json_error(
+            "RATE_LIMITED",
+            f"Rate limit exceeded: max {SUGGEST_RATE_LIMIT_PER_HOUR} suggestions per hour",
+            status_code=429
+        )
+
+    url_str = (req.url or "").strip()
+    parsed = urllib.parse.urlsplit(url_str)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return json_error("INVALID_URL", "Valid http or https URL required", status_code=400)
+
+    recent.append(now)
+    _suggest_rate_limits[client_ip] = recent
+
+    note_text = (req.note or req.reason or "Community suggestion").strip()
+    title_text = (req.title or parsed.netloc).strip()
 
     suggestion = {
         "id": str(uuid.uuid4()),
-        "url": req.url,
-        "title": req.title or parsed.netloc,
-        "reason": req.reason or "Community suggestion",
+        "url": url_str,
+        "title": title_text,
+        "note": note_text,
         "suggested_at": datetime.now(timezone.utc).isoformat(),
         "status": "pending_approval"
     }
+
+    # Store in database
+    store = get_store()
+    if hasattr(store, "add_suggestion"):
+        try:
+            store.add_suggestion(suggestion)
+        except Exception as e:
+            logger.warning(f"Could not save suggestion to store: {e}")
+
+    # Fallback to local jsonl
     os.makedirs("data", exist_ok=True)
     with open(os.path.join("data", "suggestions.jsonl"), "a", encoding="utf-8") as f:
         f.write(json.dumps(suggestion) + "\n")
 
     return {
         "status": "queued",
-        "message": "Suggestion queued for admin approval",
+        "message": "Thanks. Suggestions are reviewed before anything is tracked.",
         "suggestion": suggestion
     }

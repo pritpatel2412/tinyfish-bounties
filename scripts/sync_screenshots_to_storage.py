@@ -159,3 +159,4 @@ def sync_screenshots():
 
 if __name__ == "__main__":
     sync_screenshots()
+

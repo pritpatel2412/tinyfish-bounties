@@ -13,7 +13,7 @@ Standardized FastAPI application factory providing:
 import os
 import json
 from datetime import datetime, timezone
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -94,14 +94,38 @@ def create_app(title: str = "TinyFish Service", version: str = "1.0.0", lifespan
     """Creates a configured FastAPI application with standard monitoring routes and error envelopes."""
     app = FastAPI(title=title, version=version, lifespan=lifespan)
 
-    # CORS: Allow GET for public endpoints from any origin
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False,
-        allow_methods=["GET", "OPTIONS"],
-        allow_headers=["*"],
-    )
+    # Route-aware CORS middleware:
+    # Allows GET from any origin (including Base44 web apps).
+    # Allows POST + OPTIONS on /suggest only; all other endpoints remain GET-only for CORS.
+    @app.middleware("http")
+    async def route_cors_middleware(request: Request, call_next):
+        origin = request.headers.get("origin")
+        path = request.url.path
+        is_suggest = (path == "/suggest")
+
+        # Handle Preflight OPTIONS
+        if request.method == "OPTIONS":
+            resp = Response(status_code=204)
+            if origin:
+                resp.headers["Access-Control-Allow-Origin"] = origin
+                resp.headers["Access-Control-Allow-Credentials"] = "false"
+                resp.headers["Access-Control-Allow-Headers"] = request.headers.get("access-control-request-headers", "*")
+                if is_suggest:
+                    resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+                else:
+                    resp.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+                resp.headers["Access-Control-Max-Age"] = "86400"
+            return resp
+
+        response = await call_next(request)
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "false"
+            if is_suggest:
+                response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+            else:
+                response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        return response
 
     # Global error handler envelope
     @app.exception_handler(Exception)

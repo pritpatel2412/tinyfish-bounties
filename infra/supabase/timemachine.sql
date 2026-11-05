@@ -70,11 +70,21 @@ CREATE TABLE IF NOT EXISTS checks (
 CREATE INDEX IF NOT EXISTS idx_checks_page_observed ON checks (page_id, observed_at);
 CREATE INDEX IF NOT EXISTS idx_checks_run_id ON checks (run_id);
 
+CREATE TABLE IF NOT EXISTS suggestions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    url TEXT NOT NULL,
+    title TEXT,
+    note TEXT,
+    suggested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status TEXT NOT NULL DEFAULT 'pending_approval'
+);
+
 -- Row Level Security policies allowing API operations via project keys
 ALTER TABLE pages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE diffs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE checks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE suggestions ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
@@ -89,6 +99,9 @@ BEGIN
 
     DROP POLICY IF EXISTS "Allow all on checks" ON checks;
     CREATE POLICY "Allow all on checks" ON checks FOR ALL USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Allow all on suggestions" ON suggestions;
+    CREATE POLICY "Allow all on suggestions" ON suggestions FOR ALL USING (true) WITH CHECK (true);
 END $$;
 
 -- Storage bucket 'shots' for screenshot archival
