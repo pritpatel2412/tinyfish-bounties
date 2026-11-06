@@ -148,4 +148,5 @@
 - **Fix**:
   1. Updated `tinycore/tf_client.py` and Time Machine modules (`processor.py`, `capture.py`, `watchdog.py`) to check `os.getenv("TINYFISH_API_KEY")` with fallback to `mock-test-key` in test environments.
   2. Configured test defaults in `tests/conftest.py` and `.github/workflows/ci.yml` providing mock keys (`TINYFISH_API_KEY: mock-test-key`, `GROQ_API_KEY: mock-test-key`).
-  3. Verified offline suite (62/62 tests passing without `.env`) and zero ruff violations.
+  3. Added `evidence_receipts` DDL into `tinycore/store.py` (`init_db`) so fresh runner databases create all tables required by `test_store_evidence.py`.
+  4. Verified offline suite (62/62 tests passing without `.env` and with fresh DB) and zero ruff violations.

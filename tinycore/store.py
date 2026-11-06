@@ -141,6 +141,18 @@ def init_db(db_path: str = DB_PATH):
                     status TEXT NOT NULL DEFAULT 'pending_approval'
                 );
             """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS evidence_receipts (
+                    id TEXT PRIMARY KEY,
+                    source_url TEXT NOT NULL,
+                    checked_at TEXT NOT NULL,
+                    html_sha256 TEXT NOT NULL,
+                    screenshot_url TEXT,
+                    tf_run_id TEXT,
+                    endpoint_used TEXT NOT NULL
+                );
+            """)
     finally:
         conn.close()
 
