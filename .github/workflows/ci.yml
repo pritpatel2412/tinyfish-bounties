@@ -41,5 +41,7 @@ jobs:
         env:
           STORE_BACKEND: sqlite
           ENV: test
+          TINYFISH_API_KEY: mock-test-key
+          GROQ_API_KEY: mock-test-key
         run: |
           pytest -m "not live" -v

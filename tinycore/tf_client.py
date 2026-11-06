@@ -115,6 +115,8 @@ class TF:
             if os.path.exists(env_path):
                 from dotenv import dotenv_values
                 self.api_key = dotenv_values(env_path).get("TINYFISH_API_KEY")
+        if not self.api_key and (os.getenv("ENV") == "test" or os.getenv("PYTEST_CURRENT_TEST")):
+            self.api_key = "mock-test-key"
         if not self.api_key:
             raise ValueError("TINYFISH_API_KEY not configured in environment or .env")
 

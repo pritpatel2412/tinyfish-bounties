@@ -40,8 +40,9 @@ def add_page(
     if store is None:
         store = get_store()
     if tf is None:
-        cfg = dotenv_values(".env")
-        api_key = cfg.get("TINYFISH_API_KEY")
+        api_key = os.getenv("TINYFISH_API_KEY")
+        if not api_key and os.path.exists(".env"):
+            api_key = dotenv_values(".env").get("TINYFISH_API_KEY")
         tf = TF(api_key=api_key)
 
     # 1. Idempotency check: Return existing page if already registered

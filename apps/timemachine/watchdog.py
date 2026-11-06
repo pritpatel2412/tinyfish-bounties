@@ -8,6 +8,7 @@ Hourly in-process watchdog for Time Machine operations:
 """
 
 import logging
+import os
 import threading
 from datetime import datetime, timezone
 
@@ -26,8 +27,9 @@ def run_watchdog_check(store=None, tf: TF | None = None) -> dict:
     if store is None:
         store = get_store()
     if tf is None:
-        cfg = dotenv_values(".env")
-        api_key = cfg.get("TINYFISH_API_KEY")
+        api_key = os.getenv("TINYFISH_API_KEY")
+        if not api_key and os.path.exists(".env"):
+            api_key = dotenv_values(".env").get("TINYFISH_API_KEY")
         tf = TF(api_key=api_key)
 
     check_result = {

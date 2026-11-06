@@ -141,3 +141,11 @@
   5. Route-aware CORS: Permitting any client origin (including Base44 app domains) for all GET endpoints, while permitting POST + OPTIONS exclusively on `/suggest`.
   6. `/suggest`: Sliding-window rate limiter (5/hr/IP), strict HTTP(S) URL validation, saving nominations to `suggestions` table without monitor creation.
 - **Decision**: Added `GET /stats` endpoint, aligned `/pages` schema with `versions_count`, upgraded `PageSuggestRequest` to accept `note` with 5/hr rate limiting, implemented route-aware CORS middleware, and added `suggestions` table in SQLite/Supabase. Verified 100% test pass (62 tests).
+
+### Decision 16 — CI Offline Test Suite Environment Isolation
+- **Context**: GitHub Actions CI workflow runs without a `.env` file and failed in the "Run Offline Test Suite" step with `ValueError: TINYFISH_API_KEY not configured in environment or .env`.
+- **Root Cause**: Components previously relied on direct `.env` parsing rather than falling back to `os.getenv` or test mock tokens when executing in test mode (`ENV=test` / `PYTEST_CURRENT_TEST`).
+- **Fix**:
+  1. Updated `tinycore/tf_client.py` and Time Machine modules (`processor.py`, `capture.py`, `watchdog.py`) to check `os.getenv("TINYFISH_API_KEY")` with fallback to `mock-test-key` in test environments.
+  2. Configured test defaults in `tests/conftest.py` and `.github/workflows/ci.yml` providing mock keys (`TINYFISH_API_KEY: mock-test-key`, `GROQ_API_KEY: mock-test-key`).
+  3. Verified offline suite (62/62 tests passing without `.env`) and zero ruff violations.
