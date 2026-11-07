@@ -167,10 +167,21 @@ def classify_change(diff_dict: dict, baseline_blocks_count: int = 0) -> dict:
     materiality, suspect_variance = compute_materiality(diff_dict, baseline_blocks_count)
     default_summary = f"{n_added} added, {n_removed} removed, {n_changed} changed"
 
+    # Compact diff representation to strictly prevent context_length_exceeded on large pages
+    sample_diff = {
+        "stats": stats,
+        "changed": changed[:10] if isinstance(changed, list) else [],
+        "added": added[:10] if isinstance(added, list) else [],
+        "removed": removed[:10] if isinstance(removed, list) else []
+    }
+    diff_json_str = json.dumps(sample_diff, indent=2)
+    if len(diff_json_str) > 8000:
+        diff_json_str = diff_json_str[:8000] + "\n... (truncated)"
+
     prompt = (
         "Classify the following web page diff into one change type ('price', 'limit', 'legal', 'feature', 'cosmetic'), "
         "and a 1-sentence summary.\n\n"
-        f"Diff JSON:\n{json.dumps(diff_dict, indent=2)}\n\n"
+        f"Diff JSON:\n{diff_json_str}\n\n"
         "Return JSON with schema:\n"
         '{"type": "price|limit|legal|feature|cosmetic", "summary": string}'
     )

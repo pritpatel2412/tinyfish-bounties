@@ -162,3 +162,17 @@
      - `process_pending_events()` safely extracts event IDs during error handling.
      - `processor_worker.wake()` wraps the cold-start drain in a try-except block so background processing errors cannot abort FastAPI application startup.
   3. Added unit tests in `tests/unit/test_data_integrity.py` verifying full `MonitorEvent` object and dict compatibility. All 63 tests passing.
+
+### Decision 18 — Production Supabase Store Resiliency, Concurrency Locking, and Screenshot Loop Isolation
+- **Context**: Production logs on Render reported:
+  1. Unique constraint 409 collisions on `checks_run_id_key` and `versions_page_id_version_no_key`.
+  2. `AttributeError: 'SupabaseStore' object has no attribute '_conn'` during version updates.
+  3. `RuntimeError: asyncio.run() cannot be called from a running event loop` during screenshots.
+  4. Groq 400 `context_length_exceeded` on large page diffs.
+  5. Render startup port scan delays caused by synchronous cold-start wake blocking lifespan yield.
+- **Root Cause & Fixes**:
+  1. `SupabaseStore.update_version`: Replaced residual SQLite `self._conn()` call with Supabase REST `PATCH`.
+  2. Idempotent 409 handling: `SupabaseStore.add_check` and `add_version` catch `23505` duplicate key errors and return existing records instead of aborting.
+  3. Screenshot event loop isolation: Wrapped `asyncio.run(_grab_shot())` with `concurrent.futures.ThreadPoolExecutor` when an asyncio event loop is already active on the caller thread.
+  4. Groq context compaction: Sliced samples (10 items per category) and capped diff JSON at 8,000 characters before LLM classification.
+  5. ProcessorWorker concurrency & non-blocking wake: Introduced `_process_lock` to eliminate concurrent duplicate event processing, and `_wake_event` to trigger background worker execution without blocking FastAPI startup or delaying Render port binding.

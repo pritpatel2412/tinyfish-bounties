@@ -620,7 +620,15 @@ class SupabaseStore:
         return None
 
     def add_version(self, version: dict) -> dict:
-        return self._post("versions", version)
+        try:
+            return self._post("versions", version)
+        except Exception as e:
+            if "23505" in str(e) or "versions_page_id_version_no_key" in str(e):
+                existing = self.get_version(version["page_id"], version["version_no"])
+                if existing:
+                    return existing
+                return version
+            raise
 
     def get_versions(self, page_id: str, limit: int = 100) -> list[dict]:
         url = f"{self.sb_url}/rest/v1/versions?page_id=eq.{page_id}&order=version_no.asc&limit={limit}"
@@ -638,28 +646,19 @@ class SupabaseStore:
         return None
 
     def update_version(self, version_id: str, updates: dict) -> dict | None:
-        conn = self._conn()
-        try:
-            set_clauses = []
-            params = []
-            for k, v in updates.items():
-                if k in ("id", "page_id", "version_no"):
-                    continue
-                set_clauses.append(f"{k} = ?")
-                if k in ("blocks", "classification") and not isinstance(v, str) and v is not None:
-                    params.append(json.dumps(v))
-                else:
-                    params.append(v)
-            if not set_clauses:
-                return None
-            params.append(version_id)
-            with conn:
-                conn.execute(f"UPDATE versions SET {', '.join(set_clauses)} WHERE id = ?", tuple(params))
-            cur = conn.execute("SELECT * FROM versions WHERE id = ?", (version_id,))
-            row = cur.fetchone()
-            return dict(row) if row else None
-        finally:
-            conn.close()
+        url = f"{self.sb_url}/rest/v1/versions?id=eq.{version_id}"
+        payload = {}
+        for k, v in updates.items():
+            if k in ("id", "page_id", "version_no"):
+                continue
+            payload[k] = v
+        if not payload:
+            return None
+        resp = self.client.patch(url, headers=self.headers, json=payload)
+        if resp.status_code in (200, 204):
+            arr = resp.json() if resp.text else []
+            return arr[0] if arr else None
+        return None
 
     def get_latest_version(self, page_id: str) -> dict | None:
         url = f"{self.sb_url}/rest/v1/versions?page_id=eq.{page_id}&order=version_no.desc&limit=1"
@@ -713,9 +712,22 @@ class SupabaseStore:
             if "trigger" in err_str and ("schema cache" in err_str or "does not exist" in err_str):
                 chk_no_trig = dict(chk)
                 chk_no_trig.pop("trigger", None)
-                res = self._post("checks", chk_no_trig)
-                res["trigger"] = trigger
-                return res
+                try:
+                    res = self._post("checks", chk_no_trig)
+                    res["trigger"] = trigger
+                    return res
+                except Exception as inner_e:
+                    if "23505" in str(inner_e) or "checks_run_id_key" in str(inner_e):
+                        existing = self.get_check_by_run_id(chk.get("run_id"))
+                        if existing:
+                            return existing
+                        return chk_no_trig
+                    raise
+            if "23505" in err_str or "checks_run_id_key" in err_str:
+                existing = self.get_check_by_run_id(chk.get("run_id"))
+                if existing:
+                    return existing
+                return chk
             raise
 
     def get_checks(self, page_id: str | None = None, limit: int = 100) -> list[dict]:

@@ -493,6 +493,8 @@ class ProcessorWorker:
         self.store = store or get_store()
         self.tf = tf
         self._stop_event = threading.Event()
+        self._wake_event = threading.Event()
+        self._process_lock = threading.Lock()
         self._thread: threading.Thread | None = None
         self.last_run_at: str | None = None
         self.last_run_epoch: float = time.time()
@@ -508,6 +510,7 @@ class ProcessorWorker:
 
     def stop(self):
         self._stop_event.set()
+        self._wake_event.set()
         if self._thread:
             self._thread.join(timeout=5)
         logger.info("Time Machine Processor Worker stopped.")
@@ -515,26 +518,32 @@ class ProcessorWorker:
     def wake(self) -> int:
         """Immediately triggers an on-demand event drain."""
         logger.info("Processor woke up on on-demand trigger.")
-        try:
-            cnt = process_pending_events(store=self.store, tf=self.tf)
-            self.events_processed_total += cnt
-            self.last_run_at = datetime.now(timezone.utc).isoformat()
-            self.last_run_epoch = time.time()
-            return cnt
-        except Exception as e:
-            logger.error(f"Error in processor wake: {e}", exc_info=True)
+        if self._thread and self._thread.is_alive():
+            self._wake_event.set()
             return 0
-
-    def _run_loop(self):
-        while not self._stop_event.is_set():
+        with self._process_lock:
             try:
                 cnt = process_pending_events(store=self.store, tf=self.tf)
                 self.events_processed_total += cnt
                 self.last_run_at = datetime.now(timezone.utc).isoformat()
                 self.last_run_epoch = time.time()
+                return cnt
             except Exception as e:
-                logger.error(f"Error in processor loop: {e}", exc_info=True)
-            self._stop_event.wait(timeout=self.interval)
+                logger.error(f"Error in processor wake: {e}", exc_info=True)
+                return 0
+
+    def _run_loop(self):
+        while not self._stop_event.is_set():
+            with self._process_lock:
+                try:
+                    cnt = process_pending_events(store=self.store, tf=self.tf)
+                    self.events_processed_total += cnt
+                    self.last_run_at = datetime.now(timezone.utc).isoformat()
+                    self.last_run_epoch = time.time()
+                except Exception as e:
+                    logger.error(f"Error in processor loop: {e}", exc_info=True)
+            self._wake_event.wait(timeout=self.interval)
+            self._wake_event.clear()
 
 
 # Global singleton worker instance

@@ -266,7 +266,17 @@ class TF:
                     await browser.close()
                     return shot
 
-            shot_bytes = asyncio.run(_grab_shot())
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    shot_bytes = pool.submit(lambda: asyncio.run(_grab_shot())).result()
+            else:
+                shot_bytes = asyncio.run(_grab_shot())
             latency_ms = (time.time() - t0) * 1000
             duration_minutes = (time.time() - t0) / 60.0
             cost = max(0.0002, duration_minutes * RATES["browser_minute"])
