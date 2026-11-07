@@ -22,6 +22,24 @@ class MonitorEvent:
     payload: dict
     processed: bool = False
 
+    def get(self, key: str, default=None):
+        return getattr(self, key, default)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "received_at": self.received_at,
+            "monitor_id": self.monitor_id,
+            "run_id": self.run_id,
+            "payload": self.payload,
+            "processed": self.processed
+        }
+
+    def __getitem__(self, key: str):
+        if hasattr(self, key):
+            return getattr(self, key)
+        raise KeyError(key)
+
 
 def _get_supabase_config():
     sb_url = os.getenv("SUPABASE_URL")

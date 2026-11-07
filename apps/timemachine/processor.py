@@ -18,6 +18,7 @@ import time
 import uuid
 from collections import Counter
 from datetime import datetime, timezone
+from typing import Any
 
 from dotenv import dotenv_values
 
@@ -56,7 +57,8 @@ def get_unprocessed_events(store=None) -> list[dict]:
     # Fallback to Supabase REST via tinycore.events
     try:
         from tinycore.events import fetch_unprocessed_events
-        return fetch_unprocessed_events()
+        sb_events = fetch_unprocessed_events()
+        return [e.to_dict() if hasattr(e, "to_dict") else dict(e) for e in sb_events]
     except Exception as e:
         logger.warning(f"Failed to fetch unprocessed events from Supabase: {e}")
         return []
@@ -109,8 +111,13 @@ def insert_incoming_event(event_dict: dict, store=None) -> str:
     return event_id
 
 
-def process_single_event(event: dict, store=None, tf: TF | None = None) -> dict:
+def process_single_event(event: dict | Any, store=None, tf: TF | None = None) -> dict:
     """Processes a single monitor event with full error isolation and idempotency."""
+    if hasattr(event, "to_dict"):
+        event = event.to_dict()
+    elif not isinstance(event, dict) and hasattr(event, "__dict__"):
+        event = vars(event)
+
     if store is None:
         store = get_store()
     if tf is None:
@@ -473,7 +480,8 @@ def process_pending_events(store=None, tf=None) -> int:
             process_single_event(ev, store=store, tf=tf)
             processed_count += 1
         except Exception as e:
-            logger.error(f"Error processing event {ev.get('id')}: {e}", exc_info=True)
+            ev_id = ev.get("id") if hasattr(ev, "get") else getattr(ev, "id", "unknown")
+            logger.error(f"Error processing event {ev_id}: {e}", exc_info=True)
             # Never let one error stop the processor loop
     return processed_count
 
@@ -507,11 +515,15 @@ class ProcessorWorker:
     def wake(self) -> int:
         """Immediately triggers an on-demand event drain."""
         logger.info("Processor woke up on on-demand trigger.")
-        cnt = process_pending_events(store=self.store, tf=self.tf)
-        self.events_processed_total += cnt
-        self.last_run_at = datetime.now(timezone.utc).isoformat()
-        self.last_run_epoch = time.time()
-        return cnt
+        try:
+            cnt = process_pending_events(store=self.store, tf=self.tf)
+            self.events_processed_total += cnt
+            self.last_run_at = datetime.now(timezone.utc).isoformat()
+            self.last_run_epoch = time.time()
+            return cnt
+        except Exception as e:
+            logger.error(f"Error in processor wake: {e}", exc_info=True)
+            return 0
 
     def _run_loop(self):
         while not self._stop_event.is_set():

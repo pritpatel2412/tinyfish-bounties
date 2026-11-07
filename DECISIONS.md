@@ -150,3 +150,15 @@
   2. Configured test defaults in `tests/conftest.py` and `.github/workflows/ci.yml` providing mock keys (`TINYFISH_API_KEY: mock-test-key`, `GROQ_API_KEY: mock-test-key`).
   3. Added `evidence_receipts` DDL into `tinycore/store.py` (`init_db`) so fresh runner databases create all tables required by `test_store_evidence.py`.
   4. Verified offline suite (62/62 tests passing without `.env` and with fresh DB) and zero ruff violations.
+
+### Decision 17 — MonitorEvent Object vs Mapping Compatibility in Production Event Processor
+- **Context**: In production on Render (`STORE_BACKEND=supabase`), the application crashed on startup during `processor_worker.wake()` with `AttributeError: 'MonitorEvent' object has no attribute 'get'`.
+- **Root Cause**: `tinycore/events.py` returns `list[MonitorEvent]` dataclass instances, whereas `apps/timemachine/processor.py` expected dictionary mappings (`event.get(...)`, `ev.get('id')`). The unhandled exception in `processor_worker.wake()` caused FastAPI lifespan startup to abort and exit.
+- **Fix**:
+  1. Extended `MonitorEvent` dataclass in `tinycore/events.py` with `.get(key, default=None)`, `.to_dict()`, and `__getitem__` for transparent duck-typing as a mapping.
+  2. In `apps/timemachine/processor.py`:
+     - `get_unprocessed_events()` normalizes Supabase events to dictionaries via `to_dict()`.
+     - `process_single_event()` supports both dictionary objects and dataclasses.
+     - `process_pending_events()` safely extracts event IDs during error handling.
+     - `processor_worker.wake()` wraps the cold-start drain in a try-except block so background processing errors cannot abort FastAPI application startup.
+  3. Added unit tests in `tests/unit/test_data_integrity.py` verifying full `MonitorEvent` object and dict compatibility. All 63 tests passing.
